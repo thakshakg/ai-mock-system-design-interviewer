@@ -559,14 +559,14 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             });
 
             canvas.on('mouse:down', function(o) {
-                if (o.target) return; // Prevent drawing when clicking on an object
-
                 if (drawingTool === 'delete') {
                     if (o.target) {
                         canvas.remove(o.target);
                     }
                     return;
                 }
+				
+				if (o.target) return; // Prevent drawing when clicking on an object
 
                 if (drawingTool === 'line' || drawingTool === 'arrow'){
 					isDrawing = true;
