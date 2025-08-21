@@ -41,6 +41,8 @@ The whiteboard is a powerful tool for visual thinking and diagramming your syste
 **Integration with Chat:**
 - **Send Snapshots:** Your whiteboard diagrams can be sent to the AI interviewer as part of your message, allowing you to visually explain your design.
 
+### [Click here for the Live App](https://thakshakg.github.io/ai-mock-system-design-interviewer/)
+
 ## How to Use
 
 1. **Select a Question:** Choose a system design problem from the dropdown menu at the top of the chat area.
