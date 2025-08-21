@@ -177,11 +177,6 @@ Helvetica, Arial, sans-serif;
         <div id="whiteboard-area">
             <div id="whiteboard-controls">
                 <input type="color" id="color-picker" value="#f0f0f0">
-                <div id="tool-size-controls" style="display: none; align-items: center; gap: 5px;">
-                    <label for="tool-size-slider" id="tool-size-label">Size:</label>
-                    <input type="range" id="tool-size-slider" min="1" max="100" value="2">
-                    <span id="tool-size-value">2</span>
-                </div>
                 <button id="pencil-btn" class="action-button">Pencil</button>
                 <button id="line-btn" class="action-button">Line</button>
                 <button id="arrow-btn" class="action-button">Arrow</button>
@@ -190,6 +185,12 @@ Helvetica, Arial, sans-serif;
                 <button id="text-btn" class="action-button">Text</button>
                 <button id="delete-btn" class="action-button">Delete</button>
                 <button id="clear-btn" class="action-button">Clear</button>
+                <div id="tool-size-controls" style="display: flex; align-items: center; gap: 5px;">
+                    <label for="tool-size-slider" id="tool-size-label">Size:</label>
+                    <input type="range" id="tool-size-slider" min="1" max="100" value="5">
+                    <span id="tool-size-value">5</span>
+                </div>
+                <select id="font-selector" class="action-button" style="display: none;"></select>
             </div>
             <div class="canvas-container">
                 <canvas id="whiteboard-canvas"></canvas>
@@ -514,12 +515,20 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
         let isDrawing = false;
         let startX, startY;
         let currentLine, currentArrow;
-        let currentSize = 2;
+        let toolSettings = {
+            pencil: { size: 5 },
+            line: { size: 2 },
+            arrow: { size: 2 },
+            rect: { size: 2 },
+            circle: { size: 2 },
+            text: { size: 48, font: 'Arial' },
+        };
 
         const toolSizeControls = document.getElementById('tool-size-controls');
         const toolSizeSlider = document.getElementById('tool-size-slider');
         const toolSizeValue = document.getElementById('tool-size-value');
         const toolSizeLabel = document.getElementById('tool-size-label');
+        const fontSelector = document.getElementById('font-selector');
 
         colorPicker.addEventListener('input', (e) => {
             currentColor = e.target.value;
@@ -577,7 +586,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 
 					const options = {
 						stroke: currentColor,
-						strokeWidth: currentSize,
+						strokeWidth: toolSettings[drawingTool].size,
                         selectable: false,
                         evented: false,
 					};
@@ -604,7 +613,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     canvas.remove(currentArrow);
                     const options = {
 						stroke: currentColor,
-						strokeWidth: currentSize,
+						strokeWidth: toolSettings.arrow.size,
                         selectable: false,
                         evented: false,
 					};
@@ -633,72 +642,101 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 
             // Initial resize
             resizeCanvas();
-
+			selectTool('pencil');
+			
             // Resize canvas on window resize
             window.addEventListener('resize', resizeCanvas);
+
+            // Populate font selector
+            const fonts = ['Arial', 'Verdana', 'Georgia', 'Courier New', 'Comic Sans MS'];
+            fonts.forEach(font => {
+                const option = document.createElement('option');
+                option.value = font;
+                option.textContent = font;
+                fontSelector.appendChild(option);
+            });
+
+            fontSelector.addEventListener('change', (e) => {
+                const newFont = e.target.value;
+                toolSettings.text.font = newFont;
+                const activeObject = canvas.getActiveObject();
+                if (activeObject && activeObject.type === 'i-text') {
+                    activeObject.set('fontFamily', newFont);
+                    canvas.renderAll();
+                }
+            });
         }
 
         function updateToolControls() {
             const tool = drawingTool;
-            const sizeControls = document.getElementById('tool-size-controls');
-            const sizeLabel = document.getElementById('tool-size-label');
-            const sizeSlider = document.getElementById('tool-size-slider');
-
-            if (['pencil', 'line', 'arrow', 'rect', 'circle'].includes(tool)) {
-                sizeLabel.textContent = 'Stroke:';
-                sizeSlider.min = 1;
-                sizeSlider.max = 50;
-                sizeSlider.value = currentSize;
-                toolSizeValue.textContent = currentSize;
-                sizeControls.style.display = 'flex';
-            } else if (tool === 'text') {
-                sizeLabel.textContent = 'Font Size:';
-                sizeSlider.min = 10;
-                sizeSlider.max = 120;
-                sizeSlider.value = currentSize;
-                toolSizeValue.textContent = currentSize;
-                sizeControls.style.display = 'flex';
-            } else {
-                sizeControls.style.display = 'none';
+            const settings = toolSettings[tool];
+            if (!settings) {
+                toolSizeControls.style.display = 'none';
+                fontSelector.style.display = 'none';
+                return;
             }
+
+            toolSizeControls.style.display = 'flex';
+            fontSelector.style.display = tool === 'text' ? 'block' : 'none';
+            
+            if (tool === 'text') {
+                toolSizeLabel.textContent = 'Font Size:';
+                toolSizeSlider.min = 8;
+                toolSizeSlider.max = 120;
+                fontSelector.value = settings.font;
+            } else {
+                toolSizeLabel.textContent = 'Stroke:';
+                toolSizeSlider.min = 1;
+                toolSizeSlider.max = 50;
+            }
+            
+            toolSizeSlider.value = settings.size;
+            toolSizeValue.textContent = settings.size;
         }
 
         function selectTool(tool) {
             drawingTool = tool;
             canvas.isDrawingMode = (tool === 'pencil');
+            
             if (tool === 'pencil') {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.color = currentColor;
-                canvas.freeDrawingBrush.width = currentSize;
+                canvas.freeDrawingBrush.width = toolSettings.pencil.size;
             }
+            
             updateToolControls();
         }
 
         toolSizeSlider.addEventListener('input', (e) => {
-            currentSize = parseInt(e.target.value, 10);
-            toolSizeValue.textContent = currentSize;
+            const newSize = parseInt(e.target.value, 10);
+            toolSizeValue.textContent = newSize;
+            
+            if (toolSettings[drawingTool]) {
+                toolSettings[drawingTool].size = newSize;
+            }
 
             if (canvas.isDrawingMode) {
-                canvas.freeDrawingBrush.width = currentSize;
+                canvas.freeDrawingBrush.width = newSize;
             }
 
             const activeObject = canvas.getActiveObject();
             if (activeObject) {
                 if (activeObject.type === 'i-text') {
-                    activeObject.set('fontSize', currentSize);
+                    activeObject.set('fontSize', newSize);
                 } else if (activeObject.type === 'group') { // Arrow
+                    const strokeWidth = newSize;
                     activeObject.getObjects().forEach(obj => {
                         if (obj.type === 'line') {
-                            obj.set('strokeWidth', currentSize);
+                            obj.set('strokeWidth', strokeWidth);
                         } else if (obj.type === 'triangle') {
                             obj.set({
-                                width: currentSize * 5,
-                                height: currentSize * 5,
+                                width: strokeWidth * 5,
+                                height: strokeWidth * 5,
                             });
                         }
                     });
                 } else if (activeObject.strokeWidth) {
-                    activeObject.set('strokeWidth', currentSize);
+                    activeObject.set('strokeWidth', newSize);
                 }
                 canvas.renderAll();
             }
@@ -717,7 +755,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     top: 100,
                     fill: 'transparent',
                     stroke: currentColor,
-                    strokeWidth: currentSize,
+                    strokeWidth: toolSettings.rect.size,
                     width: 150,
                     height: 100,
                 });
@@ -733,7 +771,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     top: 100,
                     fill: 'transparent',
                     stroke: currentColor,
-                    strokeWidth: currentSize,
+                    strokeWidth: toolSettings.circle.size,
                     radius: 50,
                 });
                 canvas.add(circle);
@@ -742,17 +780,20 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 
         textBtn.addEventListener('click', () => {
             selectTool('text');
-            if (canvas) {
+            const activeObject = canvas.getActiveObject();
+            if (canvas && (!activeObject || activeObject.type !== 'i-text')) {
                 const text = new fabric.IText('Type here...', {
                     left: 100,
                     top: 100,
                     fill: currentColor,
-                    fontSize: currentSize,
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+                    fontSize: toolSettings.text.size,
+                    fontFamily: toolSettings.text.font,
                 });
                 canvas.add(text);
                 canvas.setActiveObject(text);
                 text.enterEditing();
+            } else if (activeObject && activeObject.type === 'i-text') {
+                activeObject.enterEditing();
             }
         });
 
@@ -808,7 +849,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
         }
 
         clearBtn.addEventListener('click', () => {
-            if (canvas) {
+            if (canvas && confirm('Are you sure you want to clear the canvas?')) {
                 canvas.clear();
             }
         });
