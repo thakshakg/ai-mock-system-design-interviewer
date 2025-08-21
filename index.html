@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI System Design Mock Interviewer</title>
     <script src="https://js.puter.com/v2/"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/drawingboard.js/0.4.2/drawingboard.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/drawingboard.js/0.4.2/drawingboard.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         body {
             background-color: #1a1a1a;
@@ -90,6 +88,10 @@ Helvetica, Arial, sans-serif;
         #toggle-whiteboard-btn {
             width: 200px;
         }
+        #whiteboard-controls {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -97,7 +99,11 @@ Helvetica, Arial, sans-serif;
 
     <div class="group-wrapper">
         <button id="toggle-whiteboard-btn" class="action-button">Toggle Whiteboard</button>
-        <div id="whiteboard-container" style="display: none; width: 100%; height: 400px; margin-top: 15px;"></div>
+        <div id="whiteboard-controls" style="display: none; margin-top: 15px;">
+            <button id="pencil-btn" class="action-button">Pencil</button>
+            <button id="clear-btn" class="action-button">Clear</button>
+        </div>
+        <canvas id="whiteboard-canvas" style="display: none; border: 1px solid #444; margin-top: 15px;"></canvas>
     </div>
     
     <div class="group-wrapper">
@@ -178,22 +184,27 @@ ${history.map(m => {
 
 				if (!message) return;
 
-				const response = await puter.ai.chat(message, { model: model });
+                try {
+				    const response = await puter.ai.chat(message, { model: model });
 
-				let responseText;
-				// Handle different response structures
-				if (typeof response === 'string') {
-					responseText = response; // OpenAI (string response)
-				} else if (response.message && response.message.content) {
-					if (Array.isArray(response.message.content) && response.message.content[0].text) {
-						responseText = response.message.content[0].text; // Claude
-					} else {
-						responseText = response.message.content; // Llama
-					}
-				} else {
-					responseText = JSON.stringify(response); // Fallback
-				}
-				return responseText;
+                    let responseText;
+                    // Handle different response structures
+                    if (typeof response === 'string') {
+                        responseText = response; // OpenAI (string response)
+                    } else if (response.message && response.message.content) {
+                        if (Array.isArray(response.message.content) && response.message.content[0].text) {
+                            responseText = response.message.content[0].text; // Claude
+                        } else {
+                            responseText = response.message.content; // Llama
+                        }
+                    } else {
+                        responseText = JSON.stringify(response); // Fallback
+                    }
+                    return responseText;
+                } catch (error) {
+                    console.error("Error calling puter.ai.chat:", error);
+                    return "An error occurred while communicating with the AI.";
+                }
 			},
             async run(stage, history, question, state) {
                 const prompt = this.getPrompt(stage, question, history, state);
@@ -252,13 +263,11 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 
             let userMessageContent = [{ type: 'text', text: messageText }];
 
-            if (whiteboard && whiteboardContainer.style.display === 'block') {
-                const imageBase64 = whiteboard.getImg();
-                if (imageBase64 !== whiteboard.blankCanvas) {
-                    const imageFile = await (await fetch(imageBase64)).blob();
-                    const puterFile = await puter.fs.write(`whiteboard_snapshot_${Date.now()}.png`, imageFile);
-                    userMessageContent.unshift({ type: 'file', puter_path: puterFile.path });
-                }
+            if (canvas && whiteboardCanvas.style.display === 'block' && canvas.getObjects().length > 0) {
+                const imageBase64 = canvas.toDataURL();
+                const imageFile = await (await fetch(imageBase64)).blob();
+                const puterFile = await puter.fs.write(`whiteboard_snapshot_${Date.now()}.png`, imageFile);
+                userMessageContent.unshift({ type: 'file', puter_path: puterFile.path });
             }
 
             interviewState.history.push({ role: 'user', content: userMessageContent });
@@ -395,18 +404,39 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
         startInterview();
 
         // --- Whiteboard Logic ---
-        const whiteboardContainer = document.getElementById('whiteboard-container');
+        const whiteboardCanvas = document.getElementById('whiteboard-canvas');
+        const whiteboardControls = document.getElementById('whiteboard-controls');
         const toggleWhiteboardBtn = document.getElementById('toggle-whiteboard-btn');
-        let whiteboard = null;
+        const pencilBtn = document.getElementById('pencil-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        let canvas = null;
 
         toggleWhiteboardBtn.addEventListener('click', () => {
-            if (whiteboardContainer.style.display === 'none') {
-                whiteboardContainer.style.display = 'block';
-                if (!whiteboard) {
-                    whiteboard = new DrawingBoard.Board('whiteboard-container');
+            if (whiteboardCanvas.style.display === 'none') {
+                whiteboardCanvas.style.display = 'block';
+                whiteboardControls.style.display = 'flex';
+                if (!canvas) {
+                    canvas = new fabric.Canvas('whiteboard-canvas', {
+                        isDrawingMode: true
+                    });
+                    canvas.setWidth(760);
+                    canvas.setHeight(400);
                 }
             } else {
-                whiteboardContainer.style.display = 'none';
+                whiteboardCanvas.style.display = 'none';
+                whiteboardControls.style.display = 'none';
+            }
+        });
+
+        pencilBtn.addEventListener('click', () => {
+            if (canvas) {
+                canvas.isDrawingMode = true;
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if (canvas) {
+                canvas.clear();
             }
         });
     </script>
