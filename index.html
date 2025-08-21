@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI System Design Mock Interviewer</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        #chat-container {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 20px;
+            height: 500px;
+            overflow-y: scroll;
+            background-color: #fff;
+        }
+        .message {
+            margin-bottom: 15px;
+        }
+        .user-message {
+            text-align: right;
+            color: #007bff;
+        }
+        .ai-message {
+            text-align: left;
+            color: #333;
+        }
+        #input-container {
+            display: flex;
+            margin-top: 20px;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        #send-btn {
+            padding: 10px 20px;
+            margin-left: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        #send-btn:disabled {
+            background-color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI System Design Mock Interviewer</h1>
+    <div id="chat-container"></div>
+    <div id="input-container">
+        <textarea id="user-input" placeholder="Type your response here..."></textarea>
+        <button id="send-btn">Send</button>
+    </div>
+
+    <script>
+        // --- Agent Definitions ---
+        const interviewerAgent = {
+            getPrompt(stage, question = '', history = [], state = {}) {
+                const basePrompt = `You are a system design mock interviewer, a seasoned and knowledgeable expert in software architecture. Your primary goal is to simulate a realistic system design interview for a candidate.
+
+**Personality:** You are patient, supportive, and articulate, but also challenging. You'll act as a peer, not just an interrogator. Your tone should be encouraging, focusing on guiding the candidate toward a good solution rather than simply catching them in a mistake. Use clarifying questions to probe deeper into their reasoning.
+
+**Meta-Instructions:**
+- You must wait for the candidate's response at each stage. Do not rush them.
+- Your primary objective is to evaluate their thought process, not just their final answer.
+- Maintain a conversational and encouraging tone throughout the interview.`;
+
+                const stagePrompts = {
+                    'clarification': `
+**Current Stage: Requirements Clarification**
+**Your Persona:** The "Helpful Colleague."
+**Your Objective:** To guide the user in clarifying functional and non-functional requirements for the following problem: "${question}".
+**Your Task:** Ask questions about features, user scale, latency, availability, security, and other critical constraints. Evaluate the user's ability to ask clarifying questions and their understanding of the problem's scope.
+Start the conversation with a friendly greeting and then present the question.`,
+                    'high-level-design': `
+**Current Stage: High-Level Design**
+**Your Persona:** The "Strategic Reviewer."
+**Your Objective:** To assess the user's high-level design for the problem: "${question}".
+**Your Task:** Ask the user to describe a high-level block diagram, discuss core components (load balancers, databases, caches), and explain data flow. Probe for justifications behind these design choices. Evaluate the user's architectural vision and logical breakdown of the problem.`,
+                    'deep-dive': `
+**Current Stage: Deep Dive**
+**Your Persona:** The "Technical Expert."
+**Your Objective:** To challenge the user and test their in-depth knowledge of a specific component in their design for: "${question}".
+**Your Task:** Pick a critical component from the user's design (e.g., the database, the caching layer, the message queue) and ask for a detailed deep dive. Ask about specific technologies, trade-offs (e.g., SQL vs. NoSQL), and potential bottlenecks. Act as a critical peer, raising "what if" scenarios. Evaluate the user's technical depth and ability to defend their design.`,
+                    'scaling': `
+**Current Stage: Scaling & Bottlenecks**
+**Your Persona:** The "Pragmatic Engineer."
+**Your Objective:** To push the user to consider scalability, potential failures, and edge cases for their design of: "${question}".
+**Your Task:** Ask questions about what happens under extreme load, how the system handles failures (e.g., a database replica going down), and how to address complex edge cases (e.g., consistency issues, data loss). Evaluate the user's foresight and resilience-minded design.`,
+                    'closing': `
+**Current Stage: Conclusion**
+**Your Persona:** The "Concluding Professional."
+**Your Objective:** To wrap up the interview for the problem: "${question}".
+**Your Task:** Summarize the conversation and invite the user's final questions. Assess the quality of the user's closing questions and their overall engagement.`,
+                    'feedback': `
+**Current Stage: Feedback Generation**
+**Your Persona:** The "Constructive Reviewer."
+**Your Objective:** To provide a detailed, actionable feedback report based on the entire interview for: "${question}".
+**Your Task:** Based on the provided interview transcript and the evaluations from each stage, provide a comprehensive evaluation of the candidate's performance. The evaluation should include an overall rating (Strong Hire, Hire, Leaning No Hire, No Hire) and a detailed breakdown of their performance in the following areas: Communication, Requirements Gathering, High-Level Design, Deep Dive/Technical Depth, Trade-offs, and Problem-Solving. Also provide a summary of strengths and weaknesses, and actionable advice for improvement.
+
+**Evaluations from each stage:**
+${state.evaluations.map(e => `Stage: ${e.stage}\\nEvaluation: ${e.evaluation}`).join('\\n\\n')}
+
+**Full Transcript:**
+${history.map(m => `${m.role}: ${m.content}`).join('\\n')}
+`
+                };
+
+                return `${basePrompt}\n\n${stagePrompts[stage]}`;
+            },
+			async sendMessage(message, model = "claude-sonnet-4") {
+
+				if (!message) return;
+
+				const response = await puter.ai.chat(message, { model: model });
+
+				let responseText;
+				// Handle different response structures
+				if (typeof response === 'string') {
+					responseText = response; // OpenAI (string response)
+				} else if (response.message && response.message.content) {
+					if (Array.isArray(response.message.content) && response.message.content[0].text) {
+						responseText = response.message.content[0].text; // Claude
+					} else {
+						responseText = response.message.content; // Llama
+					}
+				} else {
+					responseText = JSON.stringify(response); // Fallback
+				}
+				return responseText;
+			},
+            async run(stage, history, question, state) {
+                const prompt = this.getPrompt(stage, question, history, state);
+                const messages = [
+                    { role: 'system', content: prompt },
+                    ...history
+                ];
+                return this.sendMessage(messages);
+            },
+            async getEvaluation(stage, history, question) {
+                const prompt = `You are an expert system design interviewer. Based on the following transcript of the '${stage}' stage of an interview for the problem '${question}', please provide a brief evaluation of the candidate's performance in this stage. Focus on the specific objectives of this stage.
+
+Transcript:
+${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
+                return this.sendMessage(messages);
+            }
+        };
+
+        // --- State Management ---
+        let interviewState = {
+            stage: 'start', // 'start', 'clarification', 'high-level-design', 'deep-dive', 'scaling', 'closing', 'feedback'
+            question: '',
+            history: [],
+            evaluations: [],
+            stageStartTime: null,
+            stageTimeLimits: {
+                'clarification': 10 * 60 * 1000,
+                'high-level-design': 15 * 60 * 1000,
+                'deep-dive': 20 * 60 * 1000,
+                'scaling': 7 * 60 * 1000,
+                'closing': 3 * 60 * 1000,
+            }
+        };
+
+        // --- UI Logic ---
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        sendBtn.addEventListener('click', handleUserMessage);
+        userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleUserMessage();
+            }
+        });
+
+        async function handleUserMessage() {
+            const messageText = userInput.value.trim();
+            if (messageText === '') return;
+
+            appendMessage('user', messageText);
+            userInput.value = '';
+            sendBtn.disabled = true;
+
+            interviewState.history.push({ role: 'user', content: messageText });
+            
+            const aiResponse = await orchestrator.run();
+            
+            interviewState.history.push({ role: 'assistant', content: aiResponse });
+            appendMessage('ai', aiResponse);
+            sendBtn.disabled = false;
+        }
+        
+        function appendMessage(sender, text) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
+            messageElement.innerText = text;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // --- Orchestrator ---
+        const orchestrator = {
+            questions: [
+                "Design a URL shortening service (like Bitly).",
+                "Design a social media feed (like Twitter or Facebook news feed).",
+                "Design a distributed key-value store (like DynamoDB or Cassandra).",
+                "Design a ride-sharing service backend (like Uber or Lyft).",
+                "Design a video streaming service (like Netflix or YouTube)."
+            ],
+            getRandomQuestion() {
+                const randomIndex = Math.floor(Math.random() * this.questions.length);
+                return this.questions[randomIndex];
+            },
+            async transitionTo(newStage) {
+                // Get evaluation for the previous stage before transitioning
+                if (interviewState.stage !== 'start' && interviewState.stage !== 'feedback') {
+                    const evaluation = await interviewerAgent.getEvaluation(interviewState.stage, interviewState.history, interviewState.question);
+                    interviewState.evaluations.push({ stage: interviewState.stage, evaluation: evaluation });
+                }
+                interviewState.stage = newStage;
+                interviewState.stageStartTime = Date.now();
+            },
+            async run() {
+                const now = Date.now();
+                const timeInStage = now - interviewState.stageStartTime;
+                const timeLimit = interviewState.stageTimeLimits[interviewState.stage];
+
+                if (timeLimit && timeInStage > timeLimit) {
+                    await this.moveToNextStage();
+                }
+
+                switch (interviewState.stage) {
+                    case 'start':
+                        await this.transitionTo('clarification');
+                        interviewState.question = this.getRandomQuestion();
+                        return `Hi, welcome! Today, we'll be designing the following system: ${interviewState.question}. You have about 45 minutes. Please feel free to ask me any questions to clarify the requirements.`;
+                    case 'clarification':
+                    case 'high-level-design':
+                    case 'deep-dive':
+                    case 'scaling':
+                    case 'closing':
+                        return await interviewerAgent.run(interviewState.stage, interviewState.history, interviewState.question, interviewState);
+                    case 'feedback':
+                        return await interviewerAgent.run('feedback', interviewState.history, interviewState.question, interviewState);
+                }
+            },
+            async moveToNextStage() {
+                const stages = ['clarification', 'high-level-design', 'deep-dive', 'scaling', 'closing', 'feedback'];
+                const currentStageIndex = stages.indexOf(interviewState.stage);
+                if (currentStageIndex < stages.length - 1) {
+                    await this.transitionTo(stages[currentStageIndex + 1]);
+                }
+            }
+        };
+
+        // --- Initial Message ---
+        async function startInterview() {
+            sendBtn.disabled = true;
+            const firstMessage = await orchestrator.run();
+            appendMessage('ai', firstMessage);
+            sendBtn.disabled = false;
+        }
+
+        startInterview();
+    </script>
+</body>
+</html>
