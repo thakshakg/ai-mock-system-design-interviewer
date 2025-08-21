@@ -177,6 +177,11 @@ Helvetica, Arial, sans-serif;
         <div id="whiteboard-area">
             <div id="whiteboard-controls">
                 <input type="color" id="color-picker" value="#f0f0f0">
+                <div id="tool-size-controls" style="display: none; align-items: center; gap: 5px;">
+                    <label for="tool-size-slider" id="tool-size-label">Size:</label>
+                    <input type="range" id="tool-size-slider" min="1" max="100" value="2">
+                    <span id="tool-size-value">2</span>
+                </div>
                 <button id="pencil-btn" class="action-button">Pencil</button>
                 <button id="line-btn" class="action-button">Line</button>
                 <button id="arrow-btn" class="action-button">Arrow</button>
@@ -504,11 +509,17 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
         const clearBtn = document.getElementById('clear-btn');
         const canvasContainer = document.querySelector('.canvas-container');
         let canvas = null;
-        let currentColor = '#ffffff';
+        let currentColor = '#f0f0f0';
         let drawingTool = 'pencil';
         let isDrawing = false;
         let startX, startY;
         let currentLine, currentArrow;
+        let currentSize = 2;
+
+        const toolSizeControls = document.getElementById('tool-size-controls');
+        const toolSizeSlider = document.getElementById('tool-size-slider');
+        const toolSizeValue = document.getElementById('tool-size-value');
+        const toolSizeLabel = document.getElementById('tool-size-label');
 
         colorPicker.addEventListener('input', (e) => {
             currentColor = e.target.value;
@@ -517,9 +528,15 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             }
             const activeObject = canvas.getActiveObject();
             if (activeObject) {
-                if (activeObject.type === 'rect' || activeObject.type === 'circle') {
+                if (activeObject.type === 'rect' || activeObject.type === 'circle' || activeObject.type === 'line') {
                     activeObject.set('stroke', currentColor);
-                } else {
+                } else if (activeObject.type === 'group') { // Arrow
+                     activeObject.getObjects().forEach(obj => {
+                        obj.set('fill', currentColor);
+                        obj.set('stroke', currentColor);
+                    });
+                }
+                else {
                     activeObject.set('fill', currentColor);
                 }
                 canvas.renderAll();
@@ -542,6 +559,8 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             });
 
             canvas.on('mouse:down', function(o) {
+                if (o.target) return; // Prevent drawing when clicking on an object
+
                 if (drawingTool === 'delete') {
                     if (o.target) {
                         canvas.remove(o.target);
@@ -556,15 +575,19 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 					startX = pointer.x;
 					startY = pointer.y;
 
+					const options = {
+						stroke: currentColor,
+						strokeWidth: currentSize,
+                        selectable: false,
+                        evented: false,
+					};
+
 					if (drawingTool === 'line') {
 						const points = [startX, startY, startX, startY];
-						currentLine = new fabric.Line(points, {
-							stroke: currentColor,
-							strokeWidth: 2,
-						});
+						currentLine = new fabric.Line(points, options);
 						canvas.add(currentLine);
 					} else if (drawingTool === 'arrow') {
-						currentArrow = createArrow(startX, startY, startX, startY);
+						currentArrow = createArrow(startX, startY, startX, startY, options);
 						canvas.add(currentArrow);
 					}
 				}
@@ -579,23 +602,33 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     canvas.renderAll();
                 } else if (drawingTool === 'arrow' && currentArrow) {
                     canvas.remove(currentArrow);
-                    currentArrow = createArrow(startX, startY, pointer.x, pointer.y);
+                    const options = {
+						stroke: currentColor,
+						strokeWidth: currentSize,
+                        selectable: false,
+                        evented: false,
+					};
+                    currentArrow = createArrow(startX, startY, pointer.x, pointer.y, options);
                     canvas.add(currentArrow);
                 }
             });
 
             canvas.on('mouse:up', function(o) {
                 if (!isDrawing) return;
-                isDrawing = false;
-                canvas.selection = true;
-                if (currentLine) {
+                if(currentLine) {
+                    currentLine.set({ evented: true, selectable: true });
                     currentLine.setCoords();
-                    currentLine = null;
                 }
-                if (currentArrow) {
+                if(currentArrow) {
+                    currentArrow.set({ evented: true, selectable: true });
                     currentArrow.setCoords();
-                    currentArrow = null;
                 }
+                isDrawing = false;
+                currentLine = null;
+                currentArrow = null;
+                setTimeout(() => {
+                    canvas.selection = true;
+                }, 100);
             });
 
             // Initial resize
@@ -605,6 +638,30 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             window.addEventListener('resize', resizeCanvas);
         }
 
+        function updateToolControls() {
+            const tool = drawingTool;
+            const sizeControls = document.getElementById('tool-size-controls');
+            const sizeLabel = document.getElementById('tool-size-label');
+            const sizeSlider = document.getElementById('tool-size-slider');
+
+            if (['pencil', 'line', 'arrow', 'rect', 'circle'].includes(tool)) {
+                sizeLabel.textContent = 'Stroke:';
+                sizeSlider.min = 1;
+                sizeSlider.max = 50;
+                sizeSlider.value = currentSize;
+                toolSizeValue.textContent = currentSize;
+                sizeControls.style.display = 'flex';
+            } else if (tool === 'text') {
+                sizeLabel.textContent = 'Font Size:';
+                sizeSlider.min = 10;
+                sizeSlider.max = 120;
+                sizeSlider.value = currentSize;
+                toolSizeValue.textContent = currentSize;
+                sizeControls.style.display = 'flex';
+            } else {
+                sizeControls.style.display = 'none';
+            }
+        }
 
         function selectTool(tool) {
             drawingTool = tool;
@@ -612,9 +669,40 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             if (tool === 'pencil') {
                 canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
                 canvas.freeDrawingBrush.color = currentColor;
-                canvas.freeDrawingBrush.width = 2;
+                canvas.freeDrawingBrush.width = currentSize;
             }
+            updateToolControls();
         }
+
+        toolSizeSlider.addEventListener('input', (e) => {
+            currentSize = parseInt(e.target.value, 10);
+            toolSizeValue.textContent = currentSize;
+
+            if (canvas.isDrawingMode) {
+                canvas.freeDrawingBrush.width = currentSize;
+            }
+
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                if (activeObject.type === 'i-text') {
+                    activeObject.set('fontSize', currentSize);
+                } else if (activeObject.type === 'group') { // Arrow
+                    activeObject.getObjects().forEach(obj => {
+                        if (obj.type === 'line') {
+                            obj.set('strokeWidth', currentSize);
+                        } else if (obj.type === 'triangle') {
+                            obj.set({
+                                width: currentSize * 5,
+                                height: currentSize * 5,
+                            });
+                        }
+                    });
+                } else if (activeObject.strokeWidth) {
+                    activeObject.set('strokeWidth', currentSize);
+                }
+                canvas.renderAll();
+            }
+        });
 
         pencilBtn.addEventListener('click', () => selectTool('pencil'));
         lineBtn.addEventListener('click', () => selectTool('line'));
@@ -629,7 +717,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     top: 100,
                     fill: 'transparent',
                     stroke: currentColor,
-                    strokeWidth: 2,
+                    strokeWidth: currentSize,
                     width: 150,
                     height: 100,
                 });
@@ -645,7 +733,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     top: 100,
                     fill: 'transparent',
                     stroke: currentColor,
-                    strokeWidth: 2,
+                    strokeWidth: currentSize,
                     radius: 50,
                 });
                 canvas.add(circle);
@@ -659,7 +747,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     left: 100,
                     top: 100,
                     fill: currentColor,
-                    fontSize: 40,
+                    fontSize: currentSize,
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
                 });
                 canvas.add(text);
@@ -668,13 +756,21 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             }
         });
 
-        function createArrow(fromX, fromY, toX, toY) {
+        function createArrow(fromX, fromY, toX, toY, options) {
+            options = options || {};
             const angle = Math.atan2(toY - fromY, toX - fromX);
-            const headlen = 10;
-
-            const line = new fabric.Line([fromX, fromY, toX, toY], {
+            
+            const defaultOptions = {
                 stroke: currentColor,
                 strokeWidth: 2,
+                fill: currentColor,
+            };
+            options = { ...defaultOptions, ...options };
+            const headlen = options.strokeWidth * 5;
+
+            const line = new fabric.Line([fromX, fromY, toX, toY], {
+                stroke: options.stroke,
+                strokeWidth: options.strokeWidth,
             });
 
             const arrowhead = new fabric.Triangle({
@@ -684,28 +780,30 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                 originY: 'center',
                 height: headlen,
                 width: headlen,
-                fill: currentColor,
+                fill: options.fill,
                 angle: (angle * 180 / Math.PI) + 90,
             });
-            
+
             // Correctly position the arrowhead at the end of the line
             const endPoint = new fabric.Point(toX, toY);
             const startPoint = new fabric.Point(fromX, fromY);
             const angleRad = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
             const length = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
-
-            const newEndPointX = startPoint.x + (length - (headlen / 2)) * Math.cos(angleRad);
-            const newEndPointY = startPoint.y + (length - (headlen / 2)) * Math.sin(angleRad);
             
-            arrowhead.set({
-                left: newEndPointX + (headlen / 2) * Math.cos(angleRad),
-                top: newEndPointY + (headlen / 2) * Math.sin(angleRad),
-            });
-
+            if (length > headlen) {
+                const newEndPointX = startPoint.x + (length - (headlen / 2)) * Math.cos(angleRad);
+                const newEndPointY = startPoint.y + (length - (headlen / 2)) * Math.sin(angleRad);
+                
+                arrowhead.set({
+                    left: newEndPointX + (headlen / 2) * Math.cos(angleRad),
+                    top: newEndPointY + (headlen / 2) * Math.sin(angleRad),
+                });
+            }
 
             return new fabric.Group([line, arrowhead], {
+                ...options,
                 originX: 'center',
-                originY: 'center'
+                originY: 'center',
             });
         }
 
