@@ -6,7 +6,7 @@ An intelligent mock interviewer designed to help candidates prepare for system d
 
 The application is divided into two main areas: the AI Interviewer chat and the interactive Whiteboard. The layout is a split-screen view that is resizable to suit your workflow.
 
-### 1. AI System Design Interviewer (Chat)
+### 1. AI System Design Interviewer
 
 The chat interface allows you to engage in a mock system design interview with an AI.
 
