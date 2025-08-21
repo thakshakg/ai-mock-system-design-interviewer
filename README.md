@@ -1,6 +1,6 @@
 # 🧠 AI System Design Mock Interviewer
 
-An intelligent mock interviewer designed to help candidates prepare for system design interviews. This project simulates realistic interview scenarios, provides feedback, and guides users through architectural decision-making—all powered by AI.
+An intelligent mock interviewer designed to help candidates prepare for system design interviews. This project simulates realistic interview scenarios, provides feedback, and guides users through architectural decision-making—all powered by multi-agent agentic AI.
 
 ## 🚀 Features
 
