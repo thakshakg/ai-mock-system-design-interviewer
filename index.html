@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,38 +8,47 @@
     <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.2/split.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsplumb@2.15.6/dist/js/jsplumb.min.js"></script>
     <style>
-        html, body {
+        html,
+        body {
             height: 100%;
             margin: 0;
             padding: 0;
             overflow: hidden;
         }
+
         body {
             background-color: #1a1a1a;
             color: #f0f0f0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-Helvetica, Arial, sans-serif;
+                Helvetica, Arial, sans-serif;
             padding: 20px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
         }
+
         h1 {
             color: #FFD700;
             text-align: center;
             margin-top: 0;
         }
+
         #main-container {
             display: flex;
             flex-grow: 1;
-            gap: 0; /* Remove gap, gutter will handle spacing */
+            gap: 0;
+            /* Remove gap, gutter will handle spacing */
             min-height: 0;
             width: 100%;
-            height: calc(100% - 80px); /* Adjust height for the title */
+            height: calc(100% - 80px);
+            /* Adjust height for the title */
         }
+
         #whiteboard-area {
-            /* flex: 3; */ /* Split.js will handle the width */
+            /* flex: 3; */
+            /* Split.js will handle the width */
             border: 1px solid #555;
             border-radius: 5px;
             display: flex;
@@ -46,8 +56,10 @@ Helvetica, Arial, sans-serif;
             padding: 15px;
             overflow: hidden;
         }
+
         #chat-area {
-            /* flex: 1; */ /* Split.js will handle the width */
+            /* flex: 1; */
+            /* Split.js will handle the width */
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -55,45 +67,253 @@ Helvetica, Arial, sans-serif;
             padding: 0 15px;
             box-sizing: border-box;
         }
+
         .gutter {
             background-color: #333;
             background-repeat: no-repeat;
             background-position: 50%;
         }
+
         .gutter.gutter-horizontal {
             background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bM/5+BgeE4ARCMGkvGEgZgSpcRzQEAUg4fV4sO4sAAAAAASUVORK5CYII=');
             cursor: col-resize;
         }
+
         .group-wrapper {
             padding: 15px;
             border: 1px solid #555;
             border-radius: 5px;
             background-color: #222;
         }
-        #whiteboard-controls {
+
+        #components-palette {
             display: flex;
-            gap: 10px;
+            gap: 5px;
+            flex-wrap: wrap;
             margin-bottom: 15px;
-            align-items: center;
-        }
-        #color-picker {
+            padding: 10px;
             border: 1px solid #555;
             border-radius: 5px;
-            background-color: #333;
-            cursor: pointer;
-            height: 38px;
-            width: 50px;
+            background-color: #2a2a2a;
         }
+
+        .component-btn {
+            padding: 8px 12px;
+            border-radius: 3px;
+            border: 1px solid #555;
+            background-color: #333;
+            color: #f0f0f0;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .component-btn:hover {
+            background-color: #444;
+        }
+
+        .design-component {
+            position: absolute;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            background-color: rgba(76, 175, 80, 0.1);
+            padding: 8px;
+            color: #f0f0f0;
+            font-size: 12px;
+            text-align: center;
+            min-width: 80px;
+            min-height: 40px;
+            cursor: move;
+            z-index: 1000;
+        }
+
+        .client-component {
+            border-color: #2196F3;
+            background-color: rgba(33, 150, 243, 0.1);
+        }
+
+        .server-component {
+            border-color: #FF9800;
+            background-color: rgba(255, 152, 0, 0.1);
+        }
+
+        .database-component {
+            border-color: #9C27B0;
+            background-color: rgba(156, 39, 176, 0.1);
+        }
+
+        .cache-component {
+            border-color: #F44336;
+            background-color: rgba(244, 67, 54, 0.1);
+        }
+
+        .gateway-component {
+            border-color: #607D8B;
+            background-color: rgba(96, 125, 139, 0.1);
+        }
+
+        .queue-component {
+            border-color: #795548;
+            background-color: rgba(121, 85, 72, 0.1);
+        }
+
+        .balancer-component {
+            border-color: #009688;
+            background-color: rgba(0, 150, 136, 0.1);
+        }
+
+        .cdn-component {
+            border-color: #CDDC39;
+            background-color: rgba(205, 220, 57, 0.1);
+        }
+
+        .ai-component {
+            border-color: #E91E63;
+            background-color: rgba(233, 30, 99, 0.1);
+        }
+
+        .storage-component {
+            border-color: #3F51B5;
+            background-color: rgba(63, 81, 181, 0.1);
+        }
+
+        .custom-component {
+            border-color: #8BC34A;
+            background-color: rgba(139, 195, 74, 0.1);
+        }
+
+        .connection-context-menu {
+            position: fixed;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            padding: 5px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            min-width: 150px;
+            display: none;
+        }
+
+        .connection-help {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #f0f0f0;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 11px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .connection-help.show {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 8px 15px;
+            color: #f0f0f0;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .context-menu-item:hover {
+            background-color: #444;
+        }
+
+        .context-menu-item.active {
+            background-color: #FFD700;
+            color: #000;
+        }
+
+        .context-menu-divider {
+            height: 1px;
+            background-color: #555;
+            margin: 4px 0;
+        }
+
+        .context-menu-text-section {
+            padding: 8px 12px;
+            background-color: #2a2a2a;
+            border-top: 1px solid #555;
+            border-bottom: 1px solid #555;
+        }
+
+        .context-menu-text-section label {
+            display: block;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #f0f0f0;
+        }
+
+        #connection-text-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #555;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-bottom: 6px;
+            box-sizing: border-box;
+            background-color: #333;
+            color: #f0f0f0;
+        }
+
+        #connection-text-input:focus {
+            outline: none;
+            border-color: #FFD700;
+            box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.25);
+        }
+
+        .text-update-btn {
+            background-color: #FFD700;
+            color: #000;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .text-update-btn:hover {
+            background-color: #FFC107;
+        }
+
+        .connection-label {
+            background-color: rgba(255, 215, 0, 0.9);
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            border: 1px solid #FFD700;
+            cursor: pointer;
+            max-width: 100px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+
+        .connection-label:hover {
+            background-color: #FFD700;
+            transform: scale(1.05);
+        }
+
         .canvas-container {
             flex-grow: 1;
             position: relative;
         }
+
         #whiteboard-canvas {
             border: 1px solid #444;
             border-radius: 5px;
             position: absolute;
             top: 0;
             left: 0;
+            display: none;
         }
 
         #chat-container {
@@ -105,24 +325,29 @@ Helvetica, Arial, sans-serif;
             flex-grow: 1;
             min-height: 0;
         }
+
         .message {
             margin-bottom: 15px;
             padding: 10px;
             border-radius: 5px;
         }
+
         .user-message {
             text-align: right;
             background-color: #333;
         }
+
         .ai-message {
             text-align: left;
             background-color: #2a2a2a;
         }
+
         #input-container {
             display: flex;
             flex-direction: column;
             margin-top: 20px;
         }
+
         #user-input {
             flex-grow: 1;
             padding: 10px;
@@ -133,6 +358,7 @@ Helvetica, Arial, sans-serif;
             width: 100%;
             box-sizing: border-box;
         }
+
         .action-button {
             padding: 10px 20px;
             border-radius: 5px;
@@ -142,69 +368,89 @@ Helvetica, Arial, sans-serif;
             cursor: pointer;
             font-size: 16px;
         }
+
         #send-btn {
             margin-top: 10px;
             width: 100px;
             align-self: flex-end;
         }
+
         #send-btn:disabled {
             background-color: #444;
             color: #888;
             cursor: not-allowed;
         }
+
         .group-wrapper {
             margin-bottom: 20px;
             padding: 15px;
             border: 1px solid #555;
             border-radius: 5px;
         }
+
         label {
             margin-right: 10px;
         }
-        #toggle-whiteboard-btn {
-            width: 200px;
-        }
-        #whiteboard-controls {
-            display: flex;
-            gap: 10px;
-        }
     </style>
 </head>
+
 <body>
     <h1>AI System Design Mock Interviewer</h1>
 
     <div id="main-container">
         <div id="whiteboard-area">
-            <div id="whiteboard-controls">
-                <input type="color" id="color-picker" value="#f0f0f0">
-                <button id="pencil-btn" class="action-button">Pencil</button>
-                <button id="line-btn" class="action-button">Line</button>
-                <button id="arrow-btn" class="action-button">Arrow</button>
-                <button id="rect-btn" class="action-button">Rectangle</button>
-                <button id="circle-btn" class="action-button">Circle</button>
-                <button id="text-btn" class="action-button">Text</button>
-                <button id="delete-btn" class="action-button">Delete</button>
-                <button id="clear-btn" class="action-button">Clear</button>
-                <div id="tool-size-controls" style="display: flex; align-items: center; gap: 5px;">
-                    <label for="tool-size-slider" id="tool-size-label">Size:</label>
-                    <input type="range" id="tool-size-slider" min="1" max="100" value="5">
-                    <span id="tool-size-value">5</span>
-                </div>
-                <select id="font-selector" class="action-button" style="display: none;"></select>
+            <div id="components-palette">
+                <div class="component-btn" data-component="client">📱 Client</div>
+                <div class="component-btn" data-component="server">🖥️ Server</div>
+                <div class="component-btn" data-component="database">🗃️ Database</div>
+                <div class="component-btn" data-component="cache">⚡ Cache</div>
+                <div class="component-btn" data-component="gateway">🚪 API Gateway</div>
+                <div class="component-btn" data-component="queue">📬 Queue</div>
+                <div class="component-btn" data-component="balancer">⚖️ Load Balancer</div>
+                <div class="component-btn" data-component="cdn">🌐 CDN</div>
+                <div class="component-btn" data-component="ai">🤖 AI</div>
+                <div class="component-btn" data-component="storage">💾 Storage</div>
+                <div class="component-btn" data-component="custom">🔧 Custom</div>
             </div>
             <div class="canvas-container">
-                <canvas id="whiteboard-canvas"></canvas>
+                <canvas id="whiteboard-canvas" style="display: none;"></canvas>
+                <div id="jsplumb-container"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;"></div>
+                <div id="connection-context-menu" class="connection-context-menu">
+                    <div class="context-menu-item" data-arrow-type="one-way">
+                        ➡️ One-way Arrow
+                    </div>
+                    <div class="context-menu-item" data-arrow-type="double">
+                        ↔️ Double Arrow
+                    </div>
+                    <div class="context-menu-item" data-arrow-type="none">
+                        ➖ No Arrow
+                    </div>
+                    <div class="context-menu-divider"></div>
+                    <div class="context-menu-text-section">
+                        <label for="connection-text-input">📝 Label:</label>
+                        <input type="text" id="connection-text-input" placeholder="Enter text..." maxlength="50">
+                        <button id="update-text-btn" class="text-update-btn">Update</button>
+                    </div>
+                    <div class="context-menu-divider"></div>
+                    <div class="context-menu-item" data-action="delete">
+                        🗑️ Delete Connection
+                    </div>
+                </div>
+                <div id="connection-help" class="connection-help">
+                    💡 Tip: Double-click connections to customize arrow types and add labels
+                </div>
             </div>
         </div>
-        
+
         <div id="chat-area">
             <div class="group-wrapper">
                 <label for="question-select">Select a System Design Question:</label>
                 <select id="question-select"></select>
             </div>
-        
+
             <div id="chat-container"></div>
-            
+
             <div id="input-container">
                 <textarea id="user-input" placeholder="Type your response here..."></textarea>
                 <button id="send-btn" class="action-button">Send</button>
@@ -263,23 +509,23 @@ ${state.evaluations.map(e => `Stage: ${e.stage}\\nEvaluation: ${e.evaluation}`).
 
 **Full Transcript:**
 ${history.map(m => {
-    if (Array.isArray(m.content)) {
-        const textPart = m.content.find(p => p.type === 'text');
-        return `${m.role}: ${textPart ? textPart.text : '[image]'}`;
-    }
-    return `${m.role}: ${m.content}`;
-}).join('\\n')}
+                        if (Array.isArray(m.content)) {
+                            const textPart = m.content.find(p => p.type === 'text');
+                            return `${m.role}: ${textPart ? textPart.text : '[image]'}`;
+                        }
+                        return `${m.role}: ${m.content}`;
+                    }).join('\\n')}
 `
                 };
 
                 return `${basePrompt}\n\n${stagePrompts[stage]}`;
             },
-			async sendMessage(message, model = "claude-sonnet-4") {
+            async sendMessage(message, model = "claude-sonnet-4") {
 
-				if (!message) return;
+                if (!message) return;
 
                 try {
-				    const response = await puter.ai.chat(message, { model: model });
+                    const response = await puter.ai.chat(message, { model: model });
 
                     let responseText;
                     // Handle different response structures
@@ -299,7 +545,7 @@ ${history.map(m => {
                     console.error("Error calling puter.ai.chat:", error);
                     return "An error occurred while communicating with the AI.";
                 }
-			},
+            },
             async run(stage, history, question, state) {
                 const prompt = this.getPrompt(stage, question, history, state);
                 const messages = [
@@ -341,7 +587,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 
         sendBtn.addEventListener('click', handleUserMessage);
         questionSelect.addEventListener('change', handleQuestionChange);
-        userInput.addEventListener('keypress', function(e) {
+        userInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 handleUserMessage();
             }
@@ -357,17 +603,83 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 
             let userMessageContent = [{ type: 'text', text: messageText }];
 
-            if (canvas && canvas.getObjects().length > 0) {
-                const imageBase64 = canvas.toDataURL();
+            // Capture jsPlumb components if any exist
+            const components = jsplumbContainer.querySelectorAll('.design-component');
+            if (components.length > 0) {
+                // Create a snapshot of the component diagram
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                const containerRect = canvasContainer.getBoundingClientRect();
+
+                tempCanvas.width = containerRect.width || 800;
+                tempCanvas.height = containerRect.height || 600;
+
+                // Set background
+                tempCtx.fillStyle = '#1a1a1a';
+                tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                // Draw jsPlumb components
+                tempCtx.font = '12px Arial';
+                tempCtx.fillStyle = '#f0f0f0';
+
+                components.forEach(component => {
+                    const rect = component.getBoundingClientRect();
+                    const containerRect = jsplumbContainer.getBoundingClientRect();
+                    const x = rect.left - containerRect.left;
+                    const y = rect.top - containerRect.top;
+
+                    // Draw component rectangle
+                    tempCtx.strokeStyle = getComputedStyle(component).borderColor || '#4CAF50';
+                    tempCtx.lineWidth = 2;
+                    tempCtx.strokeRect(x, y, rect.width, rect.height);
+
+                    // Draw component background
+                    tempCtx.fillStyle = getComputedStyle(component).backgroundColor || 'rgba(76, 175, 80, 0.1)';
+                    tempCtx.fillRect(x, y, rect.width, rect.height);
+
+                    // Draw component text
+                    tempCtx.fillStyle = '#f0f0f0';
+                    tempCtx.fillText(component.textContent, x + 5, y + 20);
+                });
+
+                // Draw connections (simplified representation)
+                if (jsPlumbInstance) {
+                    const connections = jsPlumbInstance.getAllConnections();
+                    tempCtx.strokeStyle = '#f0f0f0';
+                    tempCtx.lineWidth = 2;
+
+                    connections.forEach(connection => {
+                        const sourceElement = connection.source;
+                        const targetElement = connection.target;
+
+                        if (sourceElement && targetElement) {
+                            const sourceRect = sourceElement.getBoundingClientRect();
+                            const targetRect = targetElement.getBoundingClientRect();
+                            const containerRect = jsplumbContainer.getBoundingClientRect();
+
+                            const sourceX = sourceRect.left - containerRect.left + sourceRect.width / 2;
+                            const sourceY = sourceRect.top - containerRect.top + sourceRect.height / 2;
+                            const targetX = targetRect.left - containerRect.left + targetRect.width / 2;
+                            const targetY = targetRect.top - containerRect.top + targetRect.height / 2;
+
+                            tempCtx.beginPath();
+                            tempCtx.moveTo(sourceX, sourceY);
+                            tempCtx.lineTo(targetX, targetY);
+                            tempCtx.stroke();
+                        }
+                    });
+                }
+
+                const imageBase64 = tempCanvas.toDataURL();
                 const imageFile = await (await fetch(imageBase64)).blob();
-                const puterFile = await puter.fs.write(`whiteboard_snapshot_${Date.now()}.png`, imageFile);
+                const puterFile = await puter.fs.write(`design_snapshot_${Date.now()}.png`, imageFile);
                 userMessageContent.unshift({ type: 'file', puter_path: puterFile.path });
             }
 
             interviewState.history.push({ role: 'user', content: userMessageContent });
-            
+
             const aiResponse = await orchestrator.run();
-            
+
             interviewState.history.push({ role: 'assistant', content: aiResponse });
             appendMessage('ai', aiResponse);
             sendBtn.disabled = false;
@@ -384,7 +696,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                 }
             }
         }
-        
+
         function appendMessage(sender, text) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
@@ -408,21 +720,21 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                 "Design a stock trading platform (like Robinhood).",
                 "Design a distributed file storage system (like Google Drive).",
                 "Design a rate-limiting system.",
-				"Design a recommendation engine (like Amazon's product suggestions).",
-				"Design a real-time multiplayer game backend.",
-				"Design an online payment system (like Stripe).",
-				"Design a hotel reservation system (like Booking.com).",
-				"Design a web analytics platform (like Google Analytics).",
-				"Design a distributed task scheduler (like a simplified version of Airflow).",
-				"Design a push notification service.",
-				"Design an API gateway for a microservices architecture.",
-				"Design a distributed cache system (like Redis).",
-				"Design a distributed logging and monitoring system (like the ELK stack).",
-				"Design a geo-spatial index (for a service like Uber or Yelp).",
-				"Design a system for live-streaming events (like Twitch or YouTube Live).",
-				"Design a chat application with group chats.",
-				"Design an online code editor (like Google Docs for code).",
-				"Design a system for short-term stock trading."
+                "Design a recommendation engine (like Amazon's product suggestions).",
+                "Design a real-time multiplayer game backend.",
+                "Design an online payment system (like Stripe).",
+                "Design a hotel reservation system (like Booking.com).",
+                "Design a web analytics platform (like Google Analytics).",
+                "Design a distributed task scheduler (like a simplified version of Airflow).",
+                "Design a push notification service.",
+                "Design an API gateway for a microservices architecture.",
+                "Design a distributed cache system (like Redis).",
+                "Design a distributed logging and monitoring system (like the ELK stack).",
+                "Design a geo-spatial index (for a service like Uber or Yelp).",
+                "Design a system for live-streaming events (like Twitch or YouTube Live).",
+                "Design a chat application with group chats.",
+                "Design an online code editor (like Google Docs for code).",
+                "Design a system for short-term stock trading."
             ],
             async transitionTo(newStage) {
                 // Get evaluation for the previous stage before transitioning
@@ -472,7 +784,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                 interviewState.stageStartTime = null;
                 chatContainer.innerHTML = '';
                 questionSelect.value = newQuestion;
-                
+
                 const firstMessage = await orchestrator.run();
                 appendMessage('ai', firstMessage);
             }
@@ -497,374 +809,894 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
 
         startInterview();
 
-        // --- Whiteboard Logic ---
-        const whiteboardCanvas = document.getElementById('whiteboard-canvas');
-        const colorPicker = document.getElementById('color-picker');
-        const pencilBtn = document.getElementById('pencil-btn');
-        const lineBtn = document.getElementById('line-btn');
-        const arrowBtn = document.getElementById('arrow-btn');
-        const rectBtn = document.getElementById('rect-btn');
-        const circleBtn = document.getElementById('circle-btn');
-        const textBtn = document.getElementById('text-btn');
-        const deleteBtn = document.getElementById('delete-btn');
-        const clearBtn = document.getElementById('clear-btn');
-        const canvasContainer = document.querySelector('.canvas-container');
-        let canvas = null;
-        let currentColor = '#f0f0f0';
-        let drawingTool = 'pencil';
-        let isDrawing = false;
-        let startX, startY;
-        let currentLine, currentArrow;
-        let toolSettings = {
-            pencil: { size: 5 },
-            line: { size: 2 },
-            arrow: { size: 2 },
-            rect: { size: 2 },
-            circle: { size: 2 },
-            text: { size: 48, font: 'Arial' },
+        // === Connection Management Configuration ===
+        const CONNECTION_CONFIG = {
+            MAX_CLICK_DISTANCE: 100,     // Maximum distance to consider a click valid (pixels)
+            BOUNDING_BOX_PADDING: 50,    // Padding around connection bounding box (pixels)
+            DOM_READY_DELAY: 50,         // Delay before setting up connection listeners (ms)
+            TOOLTIP_DURATION: 4000,      // How long to show connection help tooltip (ms)
+            DEFAULT_ARROW_TYPE: 'one-way' // Default arrow type for new connections
         };
 
-        const toolSizeControls = document.getElementById('tool-size-controls');
-        const toolSizeSlider = document.getElementById('tool-size-slider');
-        const toolSizeValue = document.getElementById('tool-size-value');
-        const toolSizeLabel = document.getElementById('tool-size-label');
-        const fontSelector = document.getElementById('font-selector');
+        // === Whiteboard State Variables ===
+        const whiteboardCanvas = document.getElementById('whiteboard-canvas');
+        const canvasContainer = document.querySelector('.canvas-container');
+        const jsplumbContainer = document.getElementById('jsplumb-container');
+        const contextMenu = document.getElementById('connection-context-menu');
 
-        colorPicker.addEventListener('input', (e) => {
-            currentColor = e.target.value;
-            if (canvas.freeDrawingBrush) {
-                canvas.freeDrawingBrush.color = currentColor;
-            }
-            const activeObject = canvas.getActiveObject();
-            if (activeObject) {
-                if (activeObject.type === 'rect' || activeObject.type === 'circle' || activeObject.type === 'line') {
-                    activeObject.set('stroke', currentColor);
-                } else if (activeObject.type === 'group') { // Arrow
-                     activeObject.getObjects().forEach(obj => {
-                        obj.set('fill', currentColor);
-                        obj.set('stroke', currentColor);
-                    });
-                }
-                else {
-                    activeObject.set('fill', currentColor);
-                }
-                canvas.renderAll();
-            }
-        });
+        let canvas = null;
+        let jsPlumbInstance = null;
+        let componentCounter = 0;
+        let connectionCounter = 0;
+        let currentConnection = null;
+        let lastConnection = null;
+
+        // Connection registry using Map for efficient lookup by unique ID
+        const connectionRegistry = new Map();
 
         function resizeCanvas() {
-            if (!canvas || !canvasContainer) return;
+            if (!canvasContainer) return;
             const containerWidth = canvasContainer.clientWidth;
             const containerHeight = canvasContainer.clientHeight;
-            canvas.setWidth(containerWidth);
-            canvas.setHeight(containerHeight);
-            canvas.renderAll();
+
+            // Update jsPlumb container size
+            if (jsplumbContainer) {
+                jsplumbContainer.style.width = containerWidth + 'px';
+                jsplumbContainer.style.height = containerHeight + 'px';
+            }
+
+            if (jsPlumbInstance) {
+                jsPlumbInstance.repaintEverything();
+            }
         }
 
-        function initializeWhiteboard() {
-            if (canvas) return;
-            canvas = new fabric.Canvas('whiteboard-canvas', {
-                isDrawingMode: true
+        function initializeJsPlumb() {
+            jsPlumbInstance = jsPlumb.getInstance({
+                Container: jsplumbContainer,
+                Endpoint: ["Dot", { radius: 3 }],
+                Connector: "Bezier",
+                HoverPaintStyle: { stroke: "#FFD700", strokeWidth: 2 },
+                ConnectionOverlays: [
+                    ["Arrow", { location: 1, width: 10, length: 8 }]
+                ],
+                PaintStyle: { stroke: "#f0f0f0", strokeWidth: 2 },
+                EndpointStyle: { fill: "#f0f0f0" },
+                DragOptions: { cursor: 'pointer', zIndex: 2000 }
             });
 
-            canvas.on('mouse:down', function(o) {
-                if (drawingTool === 'delete') {
-                    if (o.target) {
-                        canvas.remove(o.target);
+            // Add connection event listeners
+            jsPlumbInstance.bind("connection", function (info) {
+                // Generate a truly unique connection ID
+                connectionCounter++;
+                const originalId = info.connection.id;
+                const uniqueId = `conn-${connectionCounter}-${Date.now()}`;
+
+                // Override the connection ID with our unique one
+                info.connection.id = uniqueId;
+                info.connection.originalId = originalId;
+
+                console.log(`New connection created: ${uniqueId} (original: ${originalId})`);
+
+                // Set up the connection with default configuration
+                setupConnection(info.connection);
+
+                // Show help tooltip
+                const helpDiv = document.getElementById('connection-help');
+                if (helpDiv) {
+                    helpDiv.classList.add('show');
+                    setTimeout(() => {
+                        helpDiv.classList.remove('show');
+                    }, CONNECTION_CONFIG.TOOLTIP_DURATION);
+                }
+            });
+        }
+
+        // === Connection Identification Helper Functions ===
+
+        /**
+         * Clears conflicting DOM tags from connection elements to ensure pure geometric identification
+         */
+        function clearConflictingConnectionTags() {
+            console.log('Clearing conflicting connection DOM tags...');
+            const connectorElements = jsplumbContainer.querySelectorAll('.jtk-connector, path, svg');
+            let clearedCount = 0;
+            
+            connectorElements.forEach(element => {
+                if (element.hasAttribute('data-connection-id') || element._jsPlumbConnection) {
+                    element.removeAttribute('data-connection-id');
+                    delete element._jsPlumbConnection;
+                    clearedCount++;
+                }
+            });
+            
+            console.log(`Cleared ${clearedCount} conflicting DOM tags`);
+        }
+
+        /**
+         * Calculates the distance from a point to a line segment
+         * @param {number} pointX - X coordinate of the point
+         * @param {number} pointY - Y coordinate of the point
+         * @param {number} x1 - X coordinate of line start
+         * @param {number} y1 - Y coordinate of line start
+         * @param {number} x2 - X coordinate of line end
+         * @param {number} y2 - Y coordinate of line end
+         * @returns {number} Distance from point to line
+         */
+        function calculateDistanceToLine(pointX, pointY, x1, y1, x2, y2) {
+            const lineLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            if (lineLength === 0) return Infinity;
+
+            return Math.abs(
+                (y2 - y1) * pointX - (x2 - x1) * pointY + x2 * y1 - y2 * x1
+            ) / lineLength;
+        }
+
+        /**
+         * Checks if a point is within the bounding box of a connection
+         * @param {number} clickX - X coordinate of click
+         * @param {number} clickY - Y coordinate of click
+         * @param {Object} sourceRect - Source component bounding rectangle
+         * @param {Object} targetRect - Target component bounding rectangle
+         * @param {number} padding - Padding around the bounding box
+         * @returns {boolean} True if point is within bounds
+         */
+        function isWithinConnectionBounds(clickX, clickY, sourceRect, targetRect, padding = CONNECTION_CONFIG.BOUNDING_BOX_PADDING) {
+            const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+            const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+            const targetCenterX = targetRect.left + targetRect.width / 2;
+            const targetCenterY = targetRect.top + targetRect.height / 2;
+
+            const minX = Math.min(sourceCenterX, targetCenterX) - padding;
+            const maxX = Math.max(sourceCenterX, targetCenterX) + padding;
+            const minY = Math.min(sourceCenterY, targetCenterY) - padding;
+            const maxY = Math.max(sourceCenterY, targetCenterY) + padding;
+
+            return clickX >= minX && clickX <= maxX && clickY >= minY && clickY <= maxY;
+        }
+
+        /**
+         * Finds the connection closest to a click point using geometric calculations
+         * @param {number} clickX - X coordinate of click
+         * @param {number} clickY - Y coordinate of click
+         * @returns {Object|null} The closest connection or null if none found
+         */
+        function findClosestConnection(clickX, clickY) {
+            const allConnections = Array.from(connectionRegistry.values());
+
+            if (allConnections.length === 0) {
+                console.log('No connections available for identification');
+                return null;
+            }
+
+            let closestConnection = null;
+            let minDistance = Infinity;
+            const MAX_CLICK_DISTANCE = CONNECTION_CONFIG.MAX_CLICK_DISTANCE;
+
+            console.log(`Searching ${allConnections.length} connections for closest match to (${clickX}, ${clickY})`);
+
+            for (const connection of allConnections) {
+                if (!connection.source || !connection.target) {
+                    console.log(`Skipping connection ${connection.id}: missing source or target`);
+                    continue;
+                }
+
+                const sourceRect = connection.source.getBoundingClientRect();
+                const targetRect = connection.target.getBoundingClientRect();
+
+                // Check if click is within connection bounds first (performance optimization)
+                if (!isWithinConnectionBounds(clickX, clickY, sourceRect, targetRect)) {
+                    continue;
+                }
+
+                // Calculate distance to connection line
+                const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+                const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+                const targetCenterX = targetRect.left + targetRect.width / 2;
+                const targetCenterY = targetRect.top + targetRect.height / 2;
+
+                const distance = calculateDistanceToLine(
+                    clickX, clickY,
+                    sourceCenterX, sourceCenterY,
+                    targetCenterX, targetCenterY
+                );
+
+                console.log(`Connection ${connection.id}: distance=${distance.toFixed(2)}px`);
+
+                if (distance < MAX_CLICK_DISTANCE && distance < minDistance) {
+                    minDistance = distance;
+                    closestConnection = connection;
+                }
+            }
+
+            if (closestConnection) {
+                console.log(`Found closest connection: ${closestConnection.id} (distance: ${minDistance.toFixed(2)}px)`);
+            } else {
+                console.log('No connection found within click tolerance');
+            }
+
+            return closestConnection;
+        }
+
+        /**
+         * Attempts to identify a connection from a clicked DOM element
+         * Uses connection ID-based identification as primary method
+         * @param {HTMLElement} clickedElement - The DOM element that was clicked
+         * @param {number} clickX - X coordinate of click
+         * @param {number} clickY - Y coordinate of click
+         * @returns {Object|null} The identified connection or null
+         */
+        function identifyConnectionFromClick(clickedElement, clickX, clickY) {
+            console.log('Attempting connection identification using connection IDs...');
+
+            // Strategy 1: Direct reference on element
+            if (clickedElement._jsPlumbConnection) {
+                const connection = clickedElement._jsPlumbConnection;
+                console.log('✓ Connection found via direct element reference:', connection.id);
+                return connection;
+            }
+
+            // Strategy 2: Data attribute lookup
+            if (clickedElement.hasAttribute('data-connection-id')) {
+                const connectionId = clickedElement.getAttribute('data-connection-id');
+                const connection = connectionRegistry.get(connectionId);
+                if (connection) {
+                    console.log('✓ Connection found via data attribute:', connectionId);
+                    return connection;
+                }
+            }
+
+            // Strategy 3: Look for connection ID in parent elements
+            let parentElement = clickedElement.parentElement;
+            while (parentElement && parentElement !== jsplumbContainer) {
+                if (parentElement._jsPlumbConnection) {
+                    const connection = parentElement._jsPlumbConnection;
+                    console.log('✓ Connection found via parent element reference:', connection.id);
+                    return connection;
+                }
+                if (parentElement.hasAttribute('data-connection-id')) {
+                    const connectionId = parentElement.getAttribute('data-connection-id');
+                    const connection = connectionRegistry.get(connectionId);
+                    if (connection) {
+                        console.log('✓ Connection found via parent data attribute:', connectionId);
+                        return connection;
                     }
+                }
+                parentElement = parentElement.parentElement;
+            }
+
+            // Strategy 4: Fallback - geometric calculation (as last resort)
+            console.log('Trying geometric calculation as fallback...');
+            const connection = findClosestConnection(clickX, clickY);
+            if (connection) {
+                console.log('✓ Connection identified via geometric calculation (fallback):', connection.id);
+                // Tag element for future reference
+                clickedElement._jsPlumbConnection = connection;
+                clickedElement.setAttribute('data-connection-id', connection.id);
+                return connection;
+            }
+
+            console.log('✗ No connection found using any method');
+            return null;
+        }
+            /**
+             * Sets up a new connection in the registry and applies default settings
+             * @param {Object} connection - jsPlumb connection object
+             */
+            function setupConnection(connection) {
+                console.log(`Setting up connection: ${connection.id}`);
+
+                // Store connection in registry
+                connectionRegistry.set(connection.id, connection);
+
+                // Apply default arrow type
+                connection.arrowType = CONNECTION_CONFIG.DEFAULT_ARROW_TYPE;
+                updateConnectionArrows(connection);
+
+                // Tag DOM elements for identification
+                setTimeout(() => {
+                    tagConnectionElements(connection);
+                }, CONNECTION_CONFIG.DOM_READY_DELAY);
+
+                // Track as last connection for fallback purposes
+                lastConnection = connection;
+
+                console.log(`Connection ${connection.id} setup complete. Registry size: ${connectionRegistry.size}`);
+            }
+
+            /**
+             * Tags DOM elements associated with a connection for identification
+             * @param {Object} connection - jsPlumb connection object
+             */
+            function tagConnectionElements(connection) {
+                if (!connection || !connection.id) return;
+
+                console.log(`Tagging DOM elements for connection: ${connection.id}`);
+
+                // Find connection-related DOM elements
+                const connectorElements = jsplumbContainer.querySelectorAll('.jtk-connector, path[d], svg');
+                
+                // Tag elements that don't already have a connection ID
+                let taggedCount = 0;
+                connectorElements.forEach(element => {
+                    if (!element.hasAttribute('data-connection-id') && !element._jsPlumbConnection) {
+                        element.setAttribute('data-connection-id', connection.id);
+                        element._jsPlumbConnection = connection;
+                        taggedCount++;
+                        console.log(`Tagged element for connection ${connection.id}:`, element.tagName);
+                        
+                        // Only tag a reasonable number of elements to avoid over-tagging
+                        if (taggedCount >= 2) return;
+                    }
+                });
+
+                console.log(`Tagged ${taggedCount} elements for connection ${connection.id}`);
+            }
+
+            function createDesignComponent(type, x = 100, y = 100, customName = null) {
+                componentCounter++;
+                const componentId = `${type}-${componentCounter}`;
+
+                const componentLabels = {
+                    client: '📱 Client',
+                    server: '🖥️ Server',
+                    database: '🗃️ Database',
+                    cache: '⚡ Cache',
+                    gateway: '🚪 API Gateway',
+                    queue: '📬 Queue',
+                    balancer: '⚖️ Load Balancer',
+                    cdn: '🌐 CDN',
+                    ai: '🤖 AI',
+                    storage: '💾 Storage',
+                    custom: customName || '🔧 Custom'
+                };
+
+                const componentDiv = document.createElement('div');
+                componentDiv.id = componentId;
+                componentDiv.className = `design-component ${type}-component`;
+                componentDiv.style.left = x + 'px';
+                componentDiv.style.top = y + 'px';
+                componentDiv.innerHTML = componentLabels[type] || type;
+
+                jsplumbContainer.appendChild(componentDiv);
+
+                // Make the component draggable and add connection endpoints
+                jsPlumbInstance.draggable(componentDiv);
+
+                // Add connection points (endpoints)
+                jsPlumbInstance.addEndpoint(componentDiv, {
+                    anchor: "Top",
+                    isSource: true,
+                    isTarget: true,
+                    maxConnections: -1
+                });
+                jsPlumbInstance.addEndpoint(componentDiv, {
+                    anchor: "Bottom",
+                    isSource: true,
+                    isTarget: true,
+                    maxConnections: -1
+                });
+                jsPlumbInstance.addEndpoint(componentDiv, {
+                    anchor: "Left",
+                    isSource: true,
+                    isTarget: true,
+                    maxConnections: -1
+                });
+                jsPlumbInstance.addEndpoint(componentDiv, {
+                    anchor: "Right",
+                    isSource: true,
+                    isTarget: true,
+                    maxConnections: -1
+                });
+
+                return componentDiv;
+            }
+
+            /**
+             * Shows the connection context menu at the specified coordinates
+             * @param {Object} connection - The jsPlumb connection object
+             * @param {number} clientX - X coordinate for menu positioning
+             * @param {number} clientY - Y coordinate for menu positioning
+             */
+            function showConnectionContextMenu(connection, clientX, clientY) {
+                console.log('Showing context menu for connection:', connection.id);
+
+                // Store the current connection that was clicked
+                currentConnection = connection;
+
+                const contextMenu = document.getElementById('connection-context-menu');
+                if (!contextMenu) {
+                    console.error('Context menu element not found!');
                     return;
                 }
-				
-				if (o.target) return; // Prevent drawing when clicking on an object
 
-                if (drawingTool === 'line' || drawingTool === 'arrow'){
-					isDrawing = true;
-					canvas.selection = false;
-					const pointer = canvas.getPointer(o.e);
-					startX = pointer.x;
-					startY = pointer.y;
+                // Calculate menu position with boundary checking
+                const { menuX, menuY } = calculateMenuPosition(clientX, clientY);
 
-					const options = {
-						stroke: currentColor,
-						strokeWidth: toolSettings[drawingTool].size,
-                        selectable: false,
-                        evented: false,
-					};
+                // Position and show menu
+                contextMenu.style.position = 'fixed';
+                contextMenu.style.left = menuX + 'px';
+                contextMenu.style.top = menuY + 'px';
+                contextMenu.style.display = 'block';
 
-					if (drawingTool === 'line') {
-						const points = [startX, startY, startX, startY];
-						currentLine = new fabric.Line(points, options);
-						canvas.add(currentLine);
-					} else if (drawingTool === 'arrow') {
-						currentArrow = createArrow(startX, startY, startX, startY, options);
-						canvas.add(currentArrow);
-					}
-				}
-            });
+                console.log('Context menu positioned at:', menuX, menuY);
 
-            canvas.on('mouse:move', function(o) {
-                if (!isDrawing) return;
-                const pointer = canvas.getPointer(o.e);
-
-                if (drawingTool === 'line' && currentLine) {
-                    currentLine.set({ x2: pointer.x, y2: pointer.y });
-                    canvas.renderAll();
-                } else if (drawingTool === 'arrow' && currentArrow) {
-                    canvas.remove(currentArrow);
-                    const options = {
-						stroke: currentColor,
-						strokeWidth: toolSettings.arrow.size,
-                        selectable: false,
-                        evented: false,
-					};
-                    currentArrow = createArrow(startX, startY, pointer.x, pointer.y, options);
-                    canvas.add(currentArrow);
+                // Update active state indicators
+                updateMenuActiveStates(contextMenu, connection);
+                
+                // Populate text input with current connection text
+                const textInput = document.getElementById('connection-text-input');
+                if (textInput) {
+                    textInput.value = connection.text || '';
+                    textInput.placeholder = 'Enter connection label...';
                 }
-            });
+            }
 
-            canvas.on('mouse:up', function(o) {
-                if (!isDrawing) return;
-                if(currentLine) {
-                    currentLine.set({ evented: true, selectable: true });
-                    currentLine.setCoords();
+            /**
+             * Calculates the optimal position for the context menu within viewport bounds
+             * @param {number} clientX - X coordinate of the click
+             * @param {number} clientY - Y coordinate of the click
+             * @returns {Object} Object with menuX and menuY properties
+             */
+            function calculateMenuPosition(clientX, clientY) {
+                const menuWidth = 180;
+                const menuHeight = 180;
+                const padding = 10;
+
+                let menuX = clientX;
+                let menuY = clientY;
+
+                // Boundary checking
+                if (menuX + menuWidth > window.innerWidth) {
+                    menuX = window.innerWidth - menuWidth - padding;
                 }
-                if(currentArrow) {
-                    currentArrow.set({ evented: true, selectable: true });
-                    currentArrow.setCoords();
+                if (menuY + menuHeight > window.innerHeight) {
+                    menuY = window.innerHeight - menuHeight - padding;
                 }
-                isDrawing = false;
-                currentLine = null;
-                currentArrow = null;
-                setTimeout(() => {
-                    canvas.selection = true;
-                }, 100);
-            });
+                if (menuX < padding) menuX = padding;
+                if (menuY < padding) menuY = padding;
 
-            // Initial resize
-            resizeCanvas();
-			selectTool('pencil');
-			
-            // Resize canvas on window resize
-            window.addEventListener('resize', resizeCanvas);
+                return { menuX, menuY };
+            }
 
-            // Populate font selector
-            const fonts = ['Arial', 'Verdana', 'Georgia', 'Courier New', 'Comic Sans MS'];
-            fonts.forEach(font => {
-                const option = document.createElement('option');
-                option.value = font;
-                option.textContent = font;
-                fontSelector.appendChild(option);
-            });
+            /**
+             * Updates the active state of menu items based on the current connection
+             * @param {HTMLElement} contextMenu - The context menu element
+             * @param {Object} connection - The current connection object
+             */
+            function updateMenuActiveStates(contextMenu, connection) {
+                const menuItems = contextMenu.querySelectorAll('.context-menu-item');
+                menuItems.forEach(item => {
+                    item.classList.remove('active');
+                    const arrowType = item.getAttribute('data-arrow-type');
+                    if (arrowType && connection.arrowType === arrowType) {
+                        item.classList.add('active');
+                    }
+                });
+            }
 
-            fontSelector.addEventListener('change', (e) => {
-                const newFont = e.target.value;
-                toolSettings.text.font = newFont;
-                const activeObject = canvas.getActiveObject();
-                if (activeObject && activeObject.type === 'i-text') {
-                    activeObject.set('fontFamily', newFont);
-                    canvas.renderAll();
+            // Connection arrow customization functions
+            function updateConnectionArrows(connection) {
+                console.log('updateConnectionArrows called with:', connection);
+                
+                if (!connection || !connection.arrowType) {
+                    console.warn('updateConnectionArrows: Invalid connection or missing arrowType');
+                    return;
                 }
-            });
-        }
 
-        function updateToolControls() {
-            const tool = drawingTool;
-            const settings = toolSettings[tool];
-            if (!settings) {
-                toolSizeControls.style.display = 'none';
-                fontSelector.style.display = 'none';
-                return;
-            }
+                // Validate connection object has required jsPlumb methods
+                if (typeof connection.removeAllOverlays !== 'function') {
+                    console.error('updateConnectionArrows: removeAllOverlays method missing');
+                    return;
+                }
+                
+                if (typeof connection.addOverlay !== 'function') {
+                    console.error('updateConnectionArrows: addOverlay method missing');
+                    return;
+                }
 
-            toolSizeControls.style.display = 'flex';
-            fontSelector.style.display = tool === 'text' ? 'block' : 'none';
-            
-            if (tool === 'text') {
-                toolSizeLabel.textContent = 'Font Size:';
-                toolSizeSlider.min = 8;
-                toolSizeSlider.max = 120;
-                fontSelector.value = settings.font;
-            } else {
-                toolSizeLabel.textContent = 'Stroke:';
-                toolSizeSlider.min = 1;
-                toolSizeSlider.max = 50;
-            }
-            
-            toolSizeSlider.value = settings.size;
-            toolSizeValue.textContent = settings.size;
-        }
-
-        function selectTool(tool) {
-            drawingTool = tool;
-            canvas.isDrawingMode = (tool === 'pencil');
-            
-            if (tool === 'pencil') {
-                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-                canvas.freeDrawingBrush.color = currentColor;
-                canvas.freeDrawingBrush.width = toolSettings.pencil.size;
-            }
-            
-            updateToolControls();
-        }
-
-        toolSizeSlider.addEventListener('input', (e) => {
-            const newSize = parseInt(e.target.value, 10);
-            toolSizeValue.textContent = newSize;
-            
-            if (toolSettings[drawingTool]) {
-                toolSettings[drawingTool].size = newSize;
-            }
-
-            if (canvas.isDrawingMode) {
-                canvas.freeDrawingBrush.width = newSize;
-            }
-
-            const activeObject = canvas.getActiveObject();
-            if (activeObject) {
-                if (activeObject.type === 'i-text') {
-                    activeObject.set('fontSize', newSize);
-                } else if (activeObject.type === 'group') { // Arrow
-                    const strokeWidth = newSize;
-                    activeObject.getObjects().forEach(obj => {
-                        if (obj.type === 'line') {
-                            obj.set('strokeWidth', strokeWidth);
-                        } else if (obj.type === 'triangle') {
-                            obj.set({
-                                width: strokeWidth * 5,
-                                height: strokeWidth * 5,
-                            });
+                try {
+                    console.log('Preserving text labels and updating arrows for connection:', connection.id);
+                    
+                    // Preserve existing text labels before removing overlays
+                    let existingTextLabel = null;
+                    const existingOverlays = connection.getOverlays();
+                    Object.keys(existingOverlays).forEach(key => {
+                        const overlay = existingOverlays[key];
+                        if (overlay.type === 'Label') {
+                            existingTextLabel = overlay.getLabel();
                         }
                     });
-                } else if (activeObject.strokeWidth) {
-                    activeObject.set('strokeWidth', newSize);
+                    
+                    console.log('Removing existing overlays for connection:', connection.id);
+                    // Remove existing overlays
+                    connection.removeAllOverlays();
+                    
+                    console.log('Adding new overlays for arrow type:', connection.arrowType);
+                    // Add overlays based on arrow type
+                    switch (connection.arrowType) {
+                        case "one-way":
+                            connection.addOverlay(["Arrow", {
+                                location: 1,
+                                width: 10,
+                                length: 8,
+                                foldback: 0.8
+                            }]);
+                            console.log('Added one-way arrow overlay');
+                            break;
+                        case "double":
+                            connection.addOverlay(["Arrow", {
+                                location: 1,
+                                width: 10,
+                                length: 8,
+                                foldback: 0.8
+                            }]);
+                            connection.addOverlay(["Arrow", {
+                                location: 0,
+                                width: 10,
+                                length: 8,
+                                foldback: 0.8,
+                                direction: -1
+                            }]);
+                            console.log('Added double arrow overlays');
+                            break;
+                        case "none":
+                            console.log('No arrows added (none type)');
+                            // No arrows, just the line
+                            break;
+                        default:
+                            console.warn('Unknown arrow type:', connection.arrowType);
+                    }
+                    
+                    // Restore text label if it existed
+                    if (existingTextLabel && existingTextLabel.trim() !== '') {
+                        const labelId = `label-${connection.id}`;
+                        connection.addOverlay([
+                            "Label", 
+                            {
+                                id: labelId,
+                                label: existingTextLabel,
+                                location: 0.5,
+                                cssClass: "connection-label",
+                                events: {
+                                    dblclick: function(labelOverlay, originalEvent) {
+                                        originalEvent.stopPropagation();
+                                        showConnectionContextMenu(connection, originalEvent.clientX, originalEvent.clientY);
+                                    }
+                                }
+                            }
+                        ]);
+                        console.log(`Restored text label "${existingTextLabel}" after arrow update`);
+                        
+                        // Update connection.text to maintain consistency
+                        connection.text = existingTextLabel;
+                    }
+
+                    // Update visual appearance
+                    console.log('Repainting connection...');
+                    if (jsPlumbInstance) {
+                        try {
+                            // Try multiple repaint strategies
+                            if (connection.source && connection.target) {
+                                // Repaint the source and target elements
+                                jsPlumbInstance.repaint(connection.source);
+                                jsPlumbInstance.repaint(connection.target);
+                                console.log('Source and target elements repainted successfully');
+                            } else {
+                                // Fallback to repaint everything
+                                jsPlumbInstance.repaintEverything();
+                                console.log('All connections repainted successfully (fallback)');
+                            }
+                        } catch (repaintError) {
+                            console.warn('Repaint failed, trying repaintEverything:', repaintError.message);
+                            jsPlumbInstance.repaintEverything();
+                        }
+                    } else {
+                        console.error('jsPlumbInstance not available');
+                    }
+                } catch (error) {
+                    console.error('Error updating connection arrows:', error);
+                    console.error('Error stack:', error.stack);
+                    console.error('Connection object details:', {
+                        id: connection.id,
+                        type: typeof connection,
+                        constructor: connection.constructor?.name,
+                        arrowType: connection.arrowType,
+                        hasRemoveAllOverlays: typeof connection.removeAllOverlays,
+                        hasAddOverlay: typeof connection.addOverlay
+                    });
                 }
-                canvas.renderAll();
             }
-        });
 
-        pencilBtn.addEventListener('click', () => selectTool('pencil'));
-        lineBtn.addEventListener('click', () => selectTool('line'));
-        arrowBtn.addEventListener('click', () => selectTool('arrow'));
-        deleteBtn.addEventListener('click', () => selectTool('delete'));
+            /**
+             * Updates the text label on a connection
+             * @param {Object} connection - jsPlumb connection object
+             * @param {string} text - Text to display on the connection
+             */
+            function updateConnectionText(connection, text) {
+                if (!connection) {
+                    console.warn('updateConnectionText: Invalid connection');
+                    return;
+                }
 
-        rectBtn.addEventListener('click', () => {
-            selectTool('rect');
-            if (canvas) {
-                const rect = new fabric.Rect({
-                    left: 100,
-                    top: 100,
-                    fill: 'transparent',
-                    stroke: currentColor,
-                    strokeWidth: toolSettings.rect.size,
-                    width: 150,
-                    height: 100,
+                console.log(`Updating text for connection ${connection.id}: "${text}"`);
+
+                try {
+                    // Remove existing text overlays
+                    const existingOverlays = connection.getOverlays();
+                    Object.keys(existingOverlays).forEach(key => {
+                        const overlay = existingOverlays[key];
+                        if (overlay.type === 'Label') {
+                            connection.removeOverlay(key);
+                        }
+                    });
+
+                    // Add new text overlay if text is provided
+                    if (text && text.trim() !== '') {
+                        const labelId = `label-${connection.id}`;
+                        connection.addOverlay([
+                            "Label", 
+                            {
+                                id: labelId,
+                                label: text,
+                                location: 0.5,
+                                cssClass: "connection-label",
+                                events: {
+                                    dblclick: function(labelOverlay, originalEvent) {
+                                        // Allow editing text by double-clicking the label
+                                        originalEvent.stopPropagation();
+                                        showConnectionContextMenu(connection, originalEvent.clientX, originalEvent.clientY);
+                                    }
+                                }
+                            }
+                        ]);
+                        console.log(`Added text label "${text}" to connection ${connection.id}`);
+                    } else {
+                        console.log(`Removed text label from connection ${connection.id}`);
+                    }
+
+                    // Repaint the connection
+                    if (connection.source && connection.target) {
+                        jsPlumbInstance.repaint(connection.source);
+                        jsPlumbInstance.repaint(connection.target);
+                    }
+                } catch (error) {
+                    console.error('Error updating connection text:', error);
+                }
+            }
+
+            function hideConnectionContextMenu() {
+                const contextMenu = document.getElementById('connection-context-menu');
+                if (contextMenu) {
+                    contextMenu.style.display = 'none';
+                }
+                currentConnection = null;
+            }
+
+            function initializeWhiteboard() {
+                if (jsPlumbInstance) return;
+
+                // Initialize jsPlumb only
+                initializeJsPlumb();
+
+                // Initial resize
+                resizeCanvas();
+
+                // Resize on window resize
+                window.addEventListener('resize', resizeCanvas);
+
+                // Component palette event listeners
+                const componentBtns = document.querySelectorAll('.component-btn');
+                componentBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const componentType = e.target.getAttribute('data-component');
+                        if (componentType) {
+                            const rect = jsplumbContainer.getBoundingClientRect();
+                            const x = Math.random() * (rect.width - 100) + 50;
+                            const y = Math.random() * (rect.height - 100) + 50;
+
+                            if (componentType === 'custom') {
+                                // Prompt user for custom component name
+                                const customName = prompt('Enter a name for your custom component:', 'Custom Component');
+                                if (customName && customName.trim() !== '') {
+                                    const displayName = customName.length > 20 ? customName.substring(0, 17) + '...' : customName;
+                                    createDesignComponent(componentType, x, y, '🔧 ' + displayName);
+                                }
+                            } else {
+                                createDesignComponent(componentType, x, y);
+                            }
+                        }
+                    });
                 });
-                canvas.add(rect);
-            }
-        });
 
-        circleBtn.addEventListener('click', () => {
-            selectTool('circle');
-            if (canvas) {
-                const circle = new fabric.Circle({
-                    left: 100,
-                    top: 100,
-                    fill: 'transparent',
-                    stroke: currentColor,
-                    strokeWidth: toolSettings.circle.size,
-                    radius: 50,
+                const contextMenu = document.getElementById('connection-context-menu');
+
+                // Context menu event listeners
+                const contextMenuItems = contextMenu.querySelectorAll('.context-menu-item');
+                contextMenuItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+
+                        console.log('Context menu item clicked:', item.dataset.arrowType || item.dataset.action);
+
+                        // Store the connection reference before hiding the menu
+                        const connectionToModify = currentConnection;
+
+                        // Hide menu immediately to prevent any delays
+                        hideConnectionContextMenu();
+
+                        // Process the action using the stored connection reference
+                        if (item.dataset.arrowType && connectionToModify) {
+                            console.log('Updating arrow type to:', item.dataset.arrowType, 'for connection:', connectionToModify.id);
+                            connectionToModify.arrowType = item.dataset.arrowType;
+                            updateConnectionArrows(connectionToModify);
+                        } else if (item.dataset.action === 'delete' && connectionToModify) {
+                            console.log('Deleting connection:', connectionToModify.id);
+                            connectionRegistry.delete(connectionToModify.id);
+                            jsPlumbInstance.deleteConnection(connectionToModify);
+                            if (lastConnection === connectionToModify) {
+                                const remainingConnections = Array.from(connectionRegistry.values());
+                                lastConnection = remainingConnections.length > 0 ? remainingConnections[remainingConnections.length - 1] : null;
+                            }
+                        }
+                    });
                 });
-                canvas.add(circle);
-            }
-        });
 
-        textBtn.addEventListener('click', () => {
-            selectTool('text');
-            const activeObject = canvas.getActiveObject();
-            if (canvas && (!activeObject || activeObject.type !== 'i-text')) {
-                const text = new fabric.IText('Type here...', {
-                    left: 100,
-                    top: 100,
-                    fill: currentColor,
-                    fontSize: toolSettings.text.size,
-                    fontFamily: toolSettings.text.font,
+                // Text update button event listener
+                const updateTextBtn = document.getElementById('update-text-btn');
+                if (updateTextBtn) {
+                    updateTextBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        const textInput = document.getElementById('connection-text-input');
+                        const connectionToModify = currentConnection;
+                        
+                        if (textInput && connectionToModify) {
+                            const newText = textInput.value.trim();
+                            console.log('Updating connection text to:', newText, 'for connection:', connectionToModify.id);
+                            
+                            // Store text on connection object
+                            connectionToModify.text = newText;
+                            
+                            // Update connection with text label
+                            updateConnectionText(connectionToModify, newText);
+                            
+                            // Hide menu
+                            hideConnectionContextMenu();
+                        }
+                    });
+                }
+
+                // Enter key support for text input
+                const textInput = document.getElementById('connection-text-input');
+                if (textInput) {
+                    textInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            document.getElementById('update-text-btn').click();
+                        }
+                    });
+                }
+
+                // Global click handler to hide context menu
+                document.addEventListener('click', (e) => {
+                    const contextMenu = document.getElementById('connection-context-menu');
+                    if (contextMenu && !contextMenu.contains(e.target) && contextMenu.style.display === 'block') {
+                        hideConnectionContextMenu();
+                    }
                 });
-                canvas.add(text);
-                canvas.setActiveObject(text);
-                text.enterEditing();
-            } else if (activeObject && activeObject.type === 'i-text') {
-                activeObject.enterEditing();
+
+                // === Global Event Handlers ===
+
+                /**
+                 * Handles double-click events on connection elements
+                 * Shows the connection context menu for the clicked connection
+                 */
+                jsplumbContainer.addEventListener('dblclick', (e) => {
+                    console.log('\n=== Connection Double-Click Event ===');
+                    console.log('Target element:', e.target.tagName, e.target.classList.toString());
+                    console.log('Click coordinates:', e.clientX, e.clientY);
+
+                    // Only handle clicks on connection-related elements
+                    const isConnectionElement = e.target.classList.contains('jtk-connector') ||
+                        e.target.tagName === 'path' ||
+                        e.target.classList.contains('jtk-connector-outline');
+
+                    if (!isConnectionElement) {
+                        console.log('Click target is not a connection element, ignoring');
+                        return;
+                    }
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Identify the connection using our robust identification system
+                    const targetConnection = identifyConnectionFromClick(e.target, e.clientX, e.clientY);
+
+                    if (targetConnection) {
+                        console.log('✓ Connection identified, showing context menu for:', targetConnection.id);
+                        showConnectionContextMenu(targetConnection, e.clientX, e.clientY);
+                    } else {
+                        console.log('✗ No connection identified for this click');
+                    }
+
+                    console.log('=== End Double-Click Event ===\n');
+                });
+
+                // Global right-click handler with connection ID support
+                jsplumbContainer.addEventListener('contextmenu', (e) => {
+                    if (e.target.classList.contains('jtk-connector') ||
+                        e.target.tagName === 'path' ||
+                        e.target.classList.contains('jtk-connector-outline')) {
+
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        console.log('Right-click on connection, target:', e.target);
+
+                        // Use connection ID-based identification - same as double-click
+                        const targetConnection = identifyConnectionFromClick(e.target, e.clientX, e.clientY);
+
+                        if (targetConnection) {
+                            console.log('Right-click handler using connection:', targetConnection.id);
+                            showConnectionContextMenu(targetConnection, e.clientX, e.clientY);
+                        } else {
+                            console.log('Right-click: No connection identified');
+                        }
+                    } else {
+                        // Prevent default context menu on other areas
+                        e.preventDefault();
+                    }
+                });
+            } // End of initializeWhiteboard function
+
+            // Clear all components function
+            function clearAllComponents() {
+                if (confirm('Are you sure you want to clear all components?')) {
+                    // Hide context menu if open
+                    hideConnectionContextMenu();
+
+                    // Clear the connection registry
+                    connectionRegistry.clear();
+                    console.log('Cleared connection registry');
+
+                    // Clear all jsPlumb connections and components
+                    if (jsPlumbInstance) {
+                        jsPlumbInstance.deleteEveryEndpoint();
+                        jsPlumbInstance.deleteEveryConnection();
+                    }
+                    // Remove all design components
+                    const components = jsplumbContainer.querySelectorAll('.design-component');
+                    components.forEach(component => {
+                        component.remove();
+                    });
+                    componentCounter = 0;
+                    connectionCounter = 0; // Reset connection counter for unique IDs
+                    lastConnection = null;
+                }
             }
-        });
 
-        function createArrow(fromX, fromY, toX, toY, options) {
-            options = options || {};
-            const angle = Math.atan2(toY - fromY, toX - fromX);
-            
-            const defaultOptions = {
-                stroke: currentColor,
-                strokeWidth: 2,
-                fill: currentColor,
-            };
-            options = { ...defaultOptions, ...options };
-            const headlen = options.strokeWidth * 5;
+            // Add clear button to components palette
+            const clearButton = document.createElement('button');
+            clearButton.className = 'component-btn';
+            clearButton.style.backgroundColor = '#f44336';
+            clearButton.style.color = 'white';
+            clearButton.innerHTML = '🗑️ Clear All';
+            clearButton.addEventListener('click', clearAllComponents);
+            document.getElementById('components-palette').appendChild(clearButton);
 
-            const line = new fabric.Line([fromX, fromY, toX, toY], {
-                stroke: options.stroke,
-                strokeWidth: options.strokeWidth,
+            // Initialize Split.js
+            Split(['#whiteboard-area', '#chat-area'], {
+                sizes: [75, 25],
+                minSize: [400, 250],
+                gutterSize: 10,
+                cursor: 'col-resize',
+                onDrag: resizeCanvas,
             });
 
-            const arrowhead = new fabric.Triangle({
-                left: toX,
-                top: toY,
-                originX: 'center',
-                originY: 'center',
-                height: headlen,
-                width: headlen,
-                fill: options.fill,
-                angle: (angle * 180 / Math.PI) + 90,
-            });
-
-            // Correctly position the arrowhead at the end of the line
-            const endPoint = new fabric.Point(toX, toY);
-            const startPoint = new fabric.Point(fromX, fromY);
-            const angleRad = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
-            const length = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
-            
-            if (length > headlen) {
-                const newEndPointX = startPoint.x + (length - (headlen / 2)) * Math.cos(angleRad);
-                const newEndPointY = startPoint.y + (length - (headlen / 2)) * Math.sin(angleRad);
-                
-                arrowhead.set({
-                    left: newEndPointX + (headlen / 2) * Math.cos(angleRad),
-                    top: newEndPointY + (headlen / 2) * Math.sin(angleRad),
-                });
-            }
-
-            return new fabric.Group([line, arrowhead], {
-                ...options,
-                originX: 'center',
-                originY: 'center',
-            });
-        }
-
-        clearBtn.addEventListener('click', () => {
-            if (canvas && confirm('Are you sure you want to clear the canvas?')) {
-                canvas.clear();
-            }
-        });
-
-        // Initialize Split.js
-        Split(['#whiteboard-area', '#chat-area'], {
-            sizes: [75, 25],
-            minSize: [400, 250],
-            gutterSize: 10,
-            cursor: 'col-resize',
-            onDrag: resizeCanvas,
-        });
-
-        // Initialize the whiteboard on load
-        initializeWhiteboard();
+            // Initialize the whiteboard on load
+            initializeWhiteboard();
     </script>
 </body>
 </html>
