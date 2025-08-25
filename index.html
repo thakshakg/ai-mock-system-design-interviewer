@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.2/split.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsplumb@2.15.6/dist/js/jsplumb.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@5.1.1/marked.min.js"></script>
     <style>
         html,
         body {
@@ -384,7 +385,7 @@
             cursor: pointer;
             max-width: 100px;
             text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
 
         .connection-label:hover {
@@ -457,6 +458,143 @@
             background-color: #2a2a2a;
         }
 
+        /* Markdown styling for AI messages */
+        .ai-message h1,
+        .ai-message h2,
+        .ai-message h3,
+        .ai-message h4,
+        .ai-message h5,
+        .ai-message h6 {
+            color: #FFD700;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+
+        .ai-message h1 {
+            font-size: 18px;
+        }
+
+        .ai-message h2 {
+            font-size: 16px;
+        }
+
+        .ai-message h3 {
+            font-size: 14px;
+        }
+
+        .ai-message h4,
+        .ai-message h5,
+        .ai-message h6 {
+            font-size: 12px;
+        }
+
+        .ai-message p {
+            margin: 8px 0;
+            line-height: 1.4;
+        }
+
+        .ai-message ul,
+        .ai-message ol {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .ai-message li {
+            margin: 4px 0;
+            line-height: 1.3;
+        }
+
+        .ai-message code {
+            background-color: #333;
+            color: #FFD700;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .ai-message pre {
+            background-color: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .ai-message pre code {
+            background-color: transparent;
+            padding: 0;
+            color: #f0f0f0;
+        }
+
+        .ai-message blockquote {
+            border-left: 3px solid #FFD700;
+            margin: 10px 0;
+            padding: 5px 0 5px 15px;
+            background-color: rgba(255, 215, 0, 0.1);
+            font-style: italic;
+        }
+
+        .ai-message strong {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .ai-message em {
+            color: #ccc;
+            font-style: italic;
+        }
+
+        .ai-message a {
+            color: #4CAF50;
+            text-decoration: underline;
+        }
+
+        .ai-message a:hover {
+            color: #FFD700;
+        }
+
+        .ai-message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .ai-message th,
+        .ai-message td {
+            border: 1px solid #555;
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        .ai-message th {
+            background-color: #333;
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        /* Interview timer styles */
+        #interview-timer {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #FFD700;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            border: 1px solid #444;
+            z-index: 1000;
+        }
+
+        #interview-timer.inactive {
+            color: #666;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
         #input-container {
             display: flex;
             flex-direction: column;
@@ -513,6 +651,7 @@
     <h1>AI System Design Mock Interviewer</h1>
 
     <div id="main-container">
+        <div id="interview-timer" class="inactive">00:00:00</div>
         <div id="whiteboard-area">
             <div id="components-palette">
                 <div class="component-btn" data-component="client">📱 Client</div>
@@ -584,7 +723,8 @@
 **Meta-Instructions:**
 - You must wait for the candidate's response at each stage. Do not rush them.
 - Your primary objective is to evaluate their thought process, not just their final answer.
-- Maintain a conversational and encouraging tone throughout the interview.`;
+- Maintain a conversational and encouraging tone throughout the interview.
+- You can respond in Markdown.`;
 
                 const stagePrompts = {
                     'clarification': `
@@ -693,6 +833,93 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                 'closing': 3 * 60 * 1000,
             }
         };
+
+        // --- Interview Timer Management ---
+        let interviewTimer = {
+            startTime: null,
+            intervalId: null,
+            isActive: false
+        };
+
+        /**
+         * Starts the interview timer
+         */
+        function startInterviewTimer() {
+            interviewTimer.startTime = Date.now();
+            interviewTimer.isActive = true;
+
+            const timerElement = document.getElementById('interview-timer');
+            if (timerElement) {
+                timerElement.classList.remove('inactive');
+            }
+
+            // Update timer every second
+            interviewTimer.intervalId = setInterval(updateTimerDisplay, 1000);
+            updateTimerDisplay(); // Initial update
+        }
+
+        /**
+         * Stops the interview timer
+         */
+        function stopInterviewTimer() {
+            if (interviewTimer.intervalId) {
+                clearInterval(interviewTimer.intervalId);
+                interviewTimer.intervalId = null;
+            }
+            interviewTimer.isActive = false;
+
+            const timerElement = document.getElementById('interview-timer');
+            if (timerElement) {
+                timerElement.classList.add('inactive');
+            }
+        }
+
+        /**
+         * Resets the interview timer
+         */
+        function resetInterviewTimer() {
+            stopInterviewTimer();
+            interviewTimer.startTime = null;
+
+            const timerElement = document.getElementById('interview-timer');
+            if (timerElement) {
+                timerElement.textContent = '00:00:00';
+                timerElement.classList.add('inactive');
+            }
+        }
+
+        /**
+         * Gets the elapsed time in seconds since interview start
+         * @returns {number} Elapsed time in seconds
+         */
+        function getElapsedTimeSeconds() {
+            if (!interviewTimer.startTime) return 0;
+            return Math.floor((Date.now() - interviewTimer.startTime) / 1000);
+        }
+
+        /**
+         * Formats elapsed time as HH:MM:SS
+         * @param {number} seconds - Total seconds elapsed
+         * @returns {string} Formatted time string
+         */
+        function formatElapsedTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        /**
+         * Updates the timer display
+         */
+        function updateTimerDisplay() {
+            const timerElement = document.getElementById('interview-timer');
+            if (timerElement && interviewTimer.isActive) {
+                const elapsed = getElapsedTimeSeconds();
+                timerElement.textContent = formatElapsedTime(elapsed);
+            }
+        }
 
         // --- UI Logic ---
         const chatContainer = document.getElementById('chat-container');
@@ -816,7 +1043,22 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
-            messageElement.innerText = text;
+
+            if (sender === 'ai' && typeof marked !== 'undefined') {
+                // Configure marked options for better rendering
+                marked.setOptions({
+                    breaks: true, // Convert line breaks to <br>
+                    gfm: true,    // GitHub Flavored Markdown
+                    sanitize: false // Allow HTML (safe in this context)
+                });
+
+                // Render markdown for AI messages
+                messageElement.innerHTML = marked.parse(text);
+            } else {
+                // Plain text for user messages
+                messageElement.textContent = text;
+            }
+
             chatContainer.appendChild(messageElement);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -900,6 +1142,10 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                 chatContainer.innerHTML = '';
                 questionSelect.value = newQuestion;
 
+                // Reset and start the interview timer
+                resetInterviewTimer();
+                startInterviewTimer();
+
                 const firstMessage = await orchestrator.run();
                 appendMessage('ai', firstMessage);
             }
@@ -916,6 +1162,9 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             });
             interviewState.question = orchestrator.questions[0];
             questionSelect.value = interviewState.question;
+
+            // Start the interview timer
+            startInterviewTimer();
 
             const firstMessage = await orchestrator.run();
             appendMessage('ai', firstMessage);
@@ -1015,7 +1264,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             console.log('Clearing conflicting connection DOM tags...');
             const connectorElements = jsplumbContainer.querySelectorAll('.jtk-connector, path, svg');
             let clearedCount = 0;
-            
+
             connectorElements.forEach(element => {
                 if (element.hasAttribute('data-connection-id') || element._jsPlumbConnection) {
                     element.removeAttribute('data-connection-id');
@@ -1023,7 +1272,7 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
                     clearedCount++;
                 }
             });
-            
+
             console.log(`Cleared ${clearedCount} conflicting DOM tags`);
         }
 
@@ -1193,822 +1442,823 @@ ${history.map(m => `${m.role}: ${m.content}`).join('\\n')}`;
             console.log('✗ No connection found using any method');
             return null;
         }
-            /**
-             * Sets up a new connection in the registry and applies default settings
-             * @param {Object} connection - jsPlumb connection object
-             */
-            function setupConnection(connection) {
-                console.log(`Setting up connection: ${connection.id}`);
+        /**
+         * Sets up a new connection in the registry and applies default settings
+         * @param {Object} connection - jsPlumb connection object
+         */
+        function setupConnection(connection) {
+            console.log(`Setting up connection: ${connection.id}`);
 
-                // Store connection in registry
-                connectionRegistry.set(connection.id, connection);
+            // Store connection in registry
+            connectionRegistry.set(connection.id, connection);
 
-                // Apply default arrow type
-                connection.arrowType = CONNECTION_CONFIG.DEFAULT_ARROW_TYPE;
-                updateConnectionArrows(connection);
+            // Apply default arrow type
+            connection.arrowType = CONNECTION_CONFIG.DEFAULT_ARROW_TYPE;
+            updateConnectionArrows(connection);
 
-                // Tag DOM elements for identification
-                setTimeout(() => {
-                    tagConnectionElements(connection);
-                }, CONNECTION_CONFIG.DOM_READY_DELAY);
+            // Tag DOM elements for identification
+            setTimeout(() => {
+                tagConnectionElements(connection);
+            }, CONNECTION_CONFIG.DOM_READY_DELAY);
 
-                // Track as last connection for fallback purposes
-                lastConnection = connection;
+            // Track as last connection for fallback purposes
+            lastConnection = connection;
 
-                console.log(`Connection ${connection.id} setup complete. Registry size: ${connectionRegistry.size}`);
+            console.log(`Connection ${connection.id} setup complete. Registry size: ${connectionRegistry.size}`);
+        }
+
+        /**
+         * Tags DOM elements associated with a connection for identification
+         * @param {Object} connection - jsPlumb connection object
+         */
+        function tagConnectionElements(connection) {
+            if (!connection || !connection.id) return;
+
+            console.log(`Tagging DOM elements for connection: ${connection.id}`);
+
+            // Find connection-related DOM elements
+            const connectorElements = jsplumbContainer.querySelectorAll('.jtk-connector, path[d], svg');
+
+            // Tag elements that don't already have a connection ID
+            let taggedCount = 0;
+            connectorElements.forEach(element => {
+                if (!element.hasAttribute('data-connection-id') && !element._jsPlumbConnection) {
+                    element.setAttribute('data-connection-id', connection.id);
+                    element._jsPlumbConnection = connection;
+                    taggedCount++;
+                    console.log(`Tagged element for connection ${connection.id}:`, element.tagName);
+
+                    // Only tag a reasonable number of elements to avoid over-tagging
+                    if (taggedCount >= 2) return;
+                }
+            });
+
+            console.log(`Tagged ${taggedCount} elements for connection ${connection.id}`);
+        }
+
+        function createDesignComponent(type, x = 100, y = 100, customName = null) {
+            componentCounter++;
+            const componentId = `${type}-${componentCounter}`;
+
+            const componentLabels = {
+                client: '📱 Client',
+                server: '🖥️ Server',
+                database: '🗃️ Database',
+                cache: '⚡ Cache',
+                gateway: '🚪 API Gateway',
+                queue: '📬 Queue',
+                balancer: '⚖️ Load Balancer',
+                cdn: '🌐 CDN',
+                ai: '🤖 AI',
+                storage: '💾 Storage',
+                custom: customName || '🔧 Custom'
+            };
+
+            const componentDiv = document.createElement('div');
+            componentDiv.id = componentId;
+            componentDiv.className = `design-component ${type}-component`;
+            componentDiv.style.left = x + 'px';
+            componentDiv.style.top = y + 'px';
+
+            // Create component structure with label and text sections
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'component-label';
+            labelDiv.textContent = componentLabels[type] || type;
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'component-text';
+            textDiv.textContent = ''; // Empty initially
+            textDiv.style.display = 'none'; // Hidden until text is added
+
+            // Create resize handle
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'resize-handle';
+
+            componentDiv.appendChild(labelDiv);
+            componentDiv.appendChild(textDiv);
+            componentDiv.appendChild(resizeHandle);
+
+            // Add double-click event for text editing
+            componentDiv.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                // Don't trigger if clicking on resize handle
+                if (e.target === resizeHandle) {
+                    return;
+                }
+
+                // Don't trigger if already editing
+                if (componentDiv.querySelector('.component-text-input')) {
+                    return;
+                }
+
+                showComponentTextEditor(componentDiv, textDiv);
+            });
+
+            // Add resize functionality
+            let isResizing = false;
+            let startX, startY, startWidth, startHeight;
+
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); // Prevent jsPlumb dragging
+                e.preventDefault();
+
+                isResizing = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = parseInt(document.defaultView.getComputedStyle(componentDiv).width, 10);
+                startHeight = parseInt(document.defaultView.getComputedStyle(componentDiv).height, 10);
+
+                // Disable jsPlumb dragging temporarily
+                jsPlumbInstance.setDraggable(componentDiv, false);
+
+                document.addEventListener('mousemove', handleResize);
+                document.addEventListener('mouseup', stopResize);
+            });
+
+            function handleResize(e) {
+                if (!isResizing) return;
+
+                const newWidth = Math.max(80, startWidth + e.clientX - startX);
+                const newHeight = Math.max(40, startHeight + e.clientY - startY);
+
+                componentDiv.style.width = newWidth + 'px';
+                componentDiv.style.height = newHeight + 'px';
+
+                // Repaint jsPlumb connections and reposition endpoints
+                if (jsPlumbInstance) {
+                    // Reposition all endpoints for this component
+                    jsPlumbInstance.revalidate(componentDiv);
+
+                    // Repaint all connections attached to this component
+                    jsPlumbInstance.repaint(componentDiv);
+
+                    // Also repaint any connections that might be affected
+                    const connections = jsPlumbInstance.getConnections({ source: componentDiv });
+                    const targetConnections = jsPlumbInstance.getConnections({ target: componentDiv });
+
+                    [...connections, ...targetConnections].forEach(conn => {
+                        jsPlumbInstance.repaint(conn.source);
+                        jsPlumbInstance.repaint(conn.target);
+                    });
+                }
             }
 
-            /**
-             * Tags DOM elements associated with a connection for identification
-             * @param {Object} connection - jsPlumb connection object
-             */
-            function tagConnectionElements(connection) {
-                if (!connection || !connection.id) return;
+            function stopResize(e) {
+                if (!isResizing) return;
 
-                console.log(`Tagging DOM elements for connection: ${connection.id}`);
+                isResizing = false;
 
-                // Find connection-related DOM elements
-                const connectorElements = jsplumbContainer.querySelectorAll('.jtk-connector, path[d], svg');
-                
-                // Tag elements that don't already have a connection ID
-                let taggedCount = 0;
-                connectorElements.forEach(element => {
-                    if (!element.hasAttribute('data-connection-id') && !element._jsPlumbConnection) {
-                        element.setAttribute('data-connection-id', connection.id);
-                        element._jsPlumbConnection = connection;
-                        taggedCount++;
-                        console.log(`Tagged element for connection ${connection.id}:`, element.tagName);
-                        
-                        // Only tag a reasonable number of elements to avoid over-tagging
-                        if (taggedCount >= 2) return;
-                    }
-                });
+                // Re-enable jsPlumb dragging
+                jsPlumbInstance.setDraggable(componentDiv, true);
 
-                console.log(`Tagged ${taggedCount} elements for connection ${connection.id}`);
-            }
-
-            function createDesignComponent(type, x = 100, y = 100, customName = null) {
-                componentCounter++;
-                const componentId = `${type}-${componentCounter}`;
-
-                const componentLabels = {
-                    client: '📱 Client',
-                    server: '🖥️ Server',
-                    database: '🗃️ Database',
-                    cache: '⚡ Cache',
-                    gateway: '🚪 API Gateway',
-                    queue: '📬 Queue',
-                    balancer: '⚖️ Load Balancer',
-                    cdn: '🌐 CDN',
-                    ai: '🤖 AI',
-                    storage: '💾 Storage',
-                    custom: customName || '🔧 Custom'
-                };
-
-                const componentDiv = document.createElement('div');
-                componentDiv.id = componentId;
-                componentDiv.className = `design-component ${type}-component`;
-                componentDiv.style.left = x + 'px';
-                componentDiv.style.top = y + 'px';
-                
-                // Create component structure with label and text sections
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'component-label';
-                labelDiv.textContent = componentLabels[type] || type;
-                
-                const textDiv = document.createElement('div');
-                textDiv.className = 'component-text';
-                textDiv.textContent = ''; // Empty initially
-                textDiv.style.display = 'none'; // Hidden until text is added
-                
-                // Create resize handle
-                const resizeHandle = document.createElement('div');
-                resizeHandle.className = 'resize-handle';
-                
-                componentDiv.appendChild(labelDiv);
-                componentDiv.appendChild(textDiv);
-                componentDiv.appendChild(resizeHandle);
-
-                // Add double-click event for text editing
-                componentDiv.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    
-                    // Don't trigger if clicking on resize handle
-                    if (e.target === resizeHandle) {
-                        return;
-                    }
-                    
-                    // Don't trigger if already editing
-                    if (componentDiv.querySelector('.component-text-input')) {
-                        return;
-                    }
-                    
-                    showComponentTextEditor(componentDiv, textDiv);
-                });
-
-                // Add resize functionality
-                let isResizing = false;
-                let startX, startY, startWidth, startHeight;
-
-                resizeHandle.addEventListener('mousedown', (e) => {
-                    e.stopPropagation(); // Prevent jsPlumb dragging
-                    e.preventDefault();
-                    
-                    isResizing = true;
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    startWidth = parseInt(document.defaultView.getComputedStyle(componentDiv).width, 10);
-                    startHeight = parseInt(document.defaultView.getComputedStyle(componentDiv).height, 10);
-                    
-                    // Disable jsPlumb dragging temporarily
-                    jsPlumbInstance.setDraggable(componentDiv, false);
-                    
-                    document.addEventListener('mousemove', handleResize);
-                    document.addEventListener('mouseup', stopResize);
-                });
-
-                function handleResize(e) {
-                    if (!isResizing) return;
-                    
-                    const newWidth = Math.max(80, startWidth + e.clientX - startX);
-                    const newHeight = Math.max(40, startHeight + e.clientY - startY);
-                    
-                    componentDiv.style.width = newWidth + 'px';
-                    componentDiv.style.height = newHeight + 'px';
-                    
-                    // Repaint jsPlumb connections and reposition endpoints
-                    if (jsPlumbInstance) {
-                        // Reposition all endpoints for this component
+                // Final repaint to ensure everything is positioned correctly
+                if (jsPlumbInstance) {
+                    setTimeout(() => {
                         jsPlumbInstance.revalidate(componentDiv);
-                        
-                        // Repaint all connections attached to this component
                         jsPlumbInstance.repaint(componentDiv);
-                        
-                        // Also repaint any connections that might be affected
-                        const connections = jsPlumbInstance.getConnections({ source: componentDiv });
+
+                        // Repaint all related connections
+                        const allConnections = jsPlumbInstance.getConnections({ source: componentDiv });
                         const targetConnections = jsPlumbInstance.getConnections({ target: componentDiv });
-                        
-                        [...connections, ...targetConnections].forEach(conn => {
+
+                        [...allConnections, ...targetConnections].forEach(conn => {
                             jsPlumbInstance.repaint(conn.source);
                             jsPlumbInstance.repaint(conn.target);
                         });
-                    }
+                    }, 10); // Small delay to ensure DOM has updated
                 }
 
-                function stopResize(e) {
-                    if (!isResizing) return;
-                    
-                    isResizing = false;
-                    
-                    // Re-enable jsPlumb dragging
-                    jsPlumbInstance.setDraggable(componentDiv, true);
-                    
-                    // Final repaint to ensure everything is positioned correctly
-                    if (jsPlumbInstance) {
-                        setTimeout(() => {
-                            jsPlumbInstance.revalidate(componentDiv);
-                            jsPlumbInstance.repaint(componentDiv);
-                            
-                            // Repaint all related connections
-                            const allConnections = jsPlumbInstance.getConnections({ source: componentDiv });
-                            const targetConnections = jsPlumbInstance.getConnections({ target: componentDiv });
-                            
-                            [...allConnections, ...targetConnections].forEach(conn => {
-                                jsPlumbInstance.repaint(conn.source);
-                                jsPlumbInstance.repaint(conn.target);
-                            });
-                        }, 10); // Small delay to ensure DOM has updated
-                    }
-                    
-                    document.removeEventListener('mousemove', handleResize);
-                    document.removeEventListener('mouseup', stopResize);
-                }
-
-                jsplumbContainer.appendChild(componentDiv);
-
-                // Make the component draggable and add connection endpoints
-                jsPlumbInstance.draggable(componentDiv);
-
-                // Add connection points (endpoints) with enhanced styling
-                const endpointConfig = {
-                    isSource: true,
-                    isTarget: true,
-                    maxConnections: -1,
-                    endpoint: ["Dot", { radius: 6 }],
-                    paintStyle: { 
-                        fill: "#4CAF50", 
-                        stroke: "#2E7D32", 
-                        strokeWidth: 2 
-                    },
-                    hoverPaintStyle: {
-                        fill: "#FFD700",
-                        stroke: "#FFC107",
-                        strokeWidth: 3,
-                        radius: 8
-                    },
-                    connectorStyle: {
-                        stroke: "#f0f0f0",
-                        strokeWidth: 2
-                    },
-                    connectorHoverStyle: {
-                        stroke: "#FFD700",
-                        strokeWidth: 3
-                    }
-                };
-
-                jsPlumbInstance.addEndpoint(componentDiv, {
-                    anchor: "Top",
-                    ...endpointConfig
-                });
-                jsPlumbInstance.addEndpoint(componentDiv, {
-                    anchor: "Bottom",
-                    ...endpointConfig
-                });
-                jsPlumbInstance.addEndpoint(componentDiv, {
-                    anchor: "Left",
-                    ...endpointConfig
-                });
-                jsPlumbInstance.addEndpoint(componentDiv, {
-                    anchor: "Right",
-                    ...endpointConfig
-                });
-
-                return componentDiv;
+                document.removeEventListener('mousemove', handleResize);
+                document.removeEventListener('mouseup', stopResize);
             }
 
-            /**
-             * Shows the text editor for a component
-             * @param {HTMLElement} componentDiv - The component element
-             * @param {HTMLElement} textDiv - The text display element
-             */
-            function showComponentTextEditor(componentDiv, textDiv) {
-                const currentText = textDiv.textContent || '';
-                
-                // Create text input
-                const textInput = document.createElement('textarea');
-                textInput.className = 'component-text-input';
-                textInput.value = currentText;
-                textInput.placeholder = 'Enter component description...';
-                textInput.rows = 2;
-                
-                // Replace text div with input
-                textDiv.style.display = 'none';
-                componentDiv.appendChild(textInput);
-                
-                // Focus and select all text
-                textInput.focus();
-                textInput.select();
-                
-                // Save text function
-                const saveText = () => {
-                    const newText = textInput.value.trim();
-                    
-                    // Update text div
-                    textDiv.textContent = newText;
-                    
-                    // Show/hide text div based on content
-                    if (newText) {
-                        textDiv.style.display = 'block';
-                    } else {
-                        textDiv.style.display = 'none';
-                    }
-                    
-                    // Remove input
-                    textInput.remove();
-                    
-                    // Repaint jsPlumb connections
-                    if (jsPlumbInstance) {
-                        jsPlumbInstance.repaint(componentDiv);
-                    }
-                };
-                
-                // Event listeners
-                textInput.addEventListener('blur', saveText);
-                textInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        saveText();
-                    }
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        textInput.value = currentText; // Restore original text
-                        saveText();
+            jsplumbContainer.appendChild(componentDiv);
+
+            // Make the component draggable and add connection endpoints
+            jsPlumbInstance.draggable(componentDiv);
+
+            // Add connection points (endpoints) with enhanced styling
+            const endpointConfig = {
+                isSource: true,
+                isTarget: true,
+                maxConnections: -1,
+                endpoint: ["Dot", { radius: 6 }],
+                paintStyle: {
+                    fill: "#4CAF50",
+                    stroke: "#2E7D32",
+                    strokeWidth: 2
+                },
+                hoverPaintStyle: {
+                    fill: "#FFD700",
+                    stroke: "#FFC107",
+                    strokeWidth: 3,
+                    radius: 8
+                },
+                connectorStyle: {
+                    stroke: "#f0f0f0",
+                    strokeWidth: 2
+                },
+                connectorHoverStyle: {
+                    stroke: "#FFD700",
+                    strokeWidth: 3
+                }
+            };
+
+            jsPlumbInstance.addEndpoint(componentDiv, {
+                anchor: "Top",
+                ...endpointConfig
+            });
+            jsPlumbInstance.addEndpoint(componentDiv, {
+                anchor: "Bottom",
+                ...endpointConfig
+            });
+            jsPlumbInstance.addEndpoint(componentDiv, {
+                anchor: "Left",
+                ...endpointConfig
+            });
+            jsPlumbInstance.addEndpoint(componentDiv, {
+                anchor: "Right",
+                ...endpointConfig
+            });
+
+            return componentDiv;
+        }
+
+        /**
+         * Shows the text editor for a component
+         * @param {HTMLElement} componentDiv - The component element
+         * @param {HTMLElement} textDiv - The text display element
+         */
+        function showComponentTextEditor(componentDiv, textDiv) {
+            const currentText = textDiv.textContent || '';
+
+            // Create text input
+            const textInput = document.createElement('textarea');
+            textInput.className = 'component-text-input';
+            textInput.value = currentText;
+            textInput.placeholder = 'Enter component description...';
+            textInput.rows = 2;
+
+            // Replace text div with input
+            textDiv.style.display = 'none';
+            componentDiv.appendChild(textInput);
+
+            // Focus and select all text
+            textInput.focus();
+            textInput.select();
+
+            // Save text function
+            const saveText = () => {
+                const newText = textInput.value.trim();
+
+                // Update text div
+                textDiv.textContent = newText;
+
+                // Show/hide text div based on content
+                if (newText) {
+                    textDiv.style.display = 'block';
+                } else {
+                    textDiv.style.display = 'none';
+                }
+
+                // Remove input
+                textInput.remove();
+
+                // Repaint jsPlumb connections
+                if (jsPlumbInstance) {
+                    jsPlumbInstance.repaint(componentDiv);
+                }
+            };
+
+            // Event listeners
+            textInput.addEventListener('blur', saveText);
+            textInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    saveText();
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    textInput.value = currentText; // Restore original text
+                    saveText();
+                }
+            });
+
+            // Prevent dragging while editing
+            textInput.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+            });
+        }
+
+        /**
+         * Shows the connection context menu at the specified coordinates
+         * @param {Object} connection - The jsPlumb connection object
+         * @param {number} clientX - X coordinate for menu positioning
+         * @param {number} clientY - Y coordinate for menu positioning
+         */
+        function showConnectionContextMenu(connection, clientX, clientY) {
+            console.log('Showing context menu for connection:', connection.id);
+
+            // Store the current connection that was clicked
+            currentConnection = connection;
+
+            const contextMenu = document.getElementById('connection-context-menu');
+            if (!contextMenu) {
+                console.error('Context menu element not found!');
+                return;
+            }
+
+            // Calculate menu position with boundary checking
+            const { menuX, menuY } = calculateMenuPosition(clientX, clientY);
+
+            // Position and show menu
+            contextMenu.style.position = 'fixed';
+            contextMenu.style.left = menuX + 'px';
+            contextMenu.style.top = menuY + 'px';
+            contextMenu.style.display = 'block';
+
+            console.log('Context menu positioned at:', menuX, menuY);
+
+            // Update active state indicators
+            updateMenuActiveStates(contextMenu, connection);
+
+            // Populate text input with current connection text
+            const textInput = document.getElementById('connection-text-input');
+            if (textInput) {
+                textInput.value = connection.text || '';
+                textInput.placeholder = 'Enter connection label...';
+            }
+        }
+
+        /**
+         * Calculates the optimal position for the context menu within viewport bounds
+         * @param {number} clientX - X coordinate of the click
+         * @param {number} clientY - Y coordinate of the click
+         * @returns {Object} Object with menuX and menuY properties
+         */
+        function calculateMenuPosition(clientX, clientY) {
+            const menuWidth = 180;
+            const menuHeight = 180;
+            const padding = 10;
+
+            let menuX = clientX;
+            let menuY = clientY;
+
+            // Boundary checking
+            if (menuX + menuWidth > window.innerWidth) {
+                menuX = window.innerWidth - menuWidth - padding;
+            }
+            if (menuY + menuHeight > window.innerHeight) {
+                menuY = window.innerHeight - menuHeight - padding;
+            }
+            if (menuX < padding) menuX = padding;
+            if (menuY < padding) menuY = padding;
+
+            return { menuX, menuY };
+        }
+
+        /**
+         * Updates the active state of menu items based on the current connection
+         * @param {HTMLElement} contextMenu - The context menu element
+         * @param {Object} connection - The current connection object
+         */
+        function updateMenuActiveStates(contextMenu, connection) {
+            const menuItems = contextMenu.querySelectorAll('.context-menu-item');
+            menuItems.forEach(item => {
+                item.classList.remove('active');
+                const arrowType = item.getAttribute('data-arrow-type');
+                if (arrowType && connection.arrowType === arrowType) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Connection arrow customization functions
+        function updateConnectionArrows(connection) {
+            console.log('updateConnectionArrows called with:', connection);
+
+            if (!connection || !connection.arrowType) {
+                console.warn('updateConnectionArrows: Invalid connection or missing arrowType');
+                return;
+            }
+
+            // Validate connection object has required jsPlumb methods
+            if (typeof connection.removeAllOverlays !== 'function') {
+                console.error('updateConnectionArrows: removeAllOverlays method missing');
+                return;
+            }
+
+            if (typeof connection.addOverlay !== 'function') {
+                console.error('updateConnectionArrows: addOverlay method missing');
+                return;
+            }
+
+            try {
+                console.log('Preserving text labels and updating arrows for connection:', connection.id);
+
+                // Preserve existing text labels before removing overlays
+                let existingTextLabel = null;
+                const existingOverlays = connection.getOverlays();
+                Object.keys(existingOverlays).forEach(key => {
+                    const overlay = existingOverlays[key];
+                    if (overlay.type === 'Label') {
+                        existingTextLabel = overlay.getLabel();
                     }
                 });
-                
-                // Prevent dragging while editing
-                textInput.addEventListener('mousedown', (e) => {
-                    e.stopPropagation();
-                });
-            }
 
-            /**
-             * Shows the connection context menu at the specified coordinates
-             * @param {Object} connection - The jsPlumb connection object
-             * @param {number} clientX - X coordinate for menu positioning
-             * @param {number} clientY - Y coordinate for menu positioning
-             */
-            function showConnectionContextMenu(connection, clientX, clientY) {
-                console.log('Showing context menu for connection:', connection.id);
+                console.log('Removing existing overlays for connection:', connection.id);
+                // Remove existing overlays
+                connection.removeAllOverlays();
 
-                // Store the current connection that was clicked
-                currentConnection = connection;
-
-                const contextMenu = document.getElementById('connection-context-menu');
-                if (!contextMenu) {
-                    console.error('Context menu element not found!');
-                    return;
+                console.log('Adding new overlays for arrow type:', connection.arrowType);
+                // Add overlays based on arrow type
+                switch (connection.arrowType) {
+                    case "one-way":
+                        connection.addOverlay(["Arrow", {
+                            location: 1,
+                            width: 10,
+                            length: 8,
+                            foldback: 0.8
+                        }]);
+                        console.log('Added one-way arrow overlay');
+                        break;
+                    case "double":
+                        connection.addOverlay(["Arrow", {
+                            location: 1,
+                            width: 10,
+                            length: 8,
+                            foldback: 0.8
+                        }]);
+                        connection.addOverlay(["Arrow", {
+                            location: 0,
+                            width: 10,
+                            length: 8,
+                            foldback: 0.8,
+                            direction: -1
+                        }]);
+                        console.log('Added double arrow overlays');
+                        break;
+                    case "none":
+                        console.log('No arrows added (none type)');
+                        // No arrows, just the line
+                        break;
+                    default:
+                        console.warn('Unknown arrow type:', connection.arrowType);
                 }
 
-                // Calculate menu position with boundary checking
-                const { menuX, menuY } = calculateMenuPosition(clientX, clientY);
-
-                // Position and show menu
-                contextMenu.style.position = 'fixed';
-                contextMenu.style.left = menuX + 'px';
-                contextMenu.style.top = menuY + 'px';
-                contextMenu.style.display = 'block';
-
-                console.log('Context menu positioned at:', menuX, menuY);
-
-                // Update active state indicators
-                updateMenuActiveStates(contextMenu, connection);
-                
-                // Populate text input with current connection text
-                const textInput = document.getElementById('connection-text-input');
-                if (textInput) {
-                    textInput.value = connection.text || '';
-                    textInput.placeholder = 'Enter connection label...';
-                }
-            }
-
-            /**
-             * Calculates the optimal position for the context menu within viewport bounds
-             * @param {number} clientX - X coordinate of the click
-             * @param {number} clientY - Y coordinate of the click
-             * @returns {Object} Object with menuX and menuY properties
-             */
-            function calculateMenuPosition(clientX, clientY) {
-                const menuWidth = 180;
-                const menuHeight = 180;
-                const padding = 10;
-
-                let menuX = clientX;
-                let menuY = clientY;
-
-                // Boundary checking
-                if (menuX + menuWidth > window.innerWidth) {
-                    menuX = window.innerWidth - menuWidth - padding;
-                }
-                if (menuY + menuHeight > window.innerHeight) {
-                    menuY = window.innerHeight - menuHeight - padding;
-                }
-                if (menuX < padding) menuX = padding;
-                if (menuY < padding) menuY = padding;
-
-                return { menuX, menuY };
-            }
-
-            /**
-             * Updates the active state of menu items based on the current connection
-             * @param {HTMLElement} contextMenu - The context menu element
-             * @param {Object} connection - The current connection object
-             */
-            function updateMenuActiveStates(contextMenu, connection) {
-                const menuItems = contextMenu.querySelectorAll('.context-menu-item');
-                menuItems.forEach(item => {
-                    item.classList.remove('active');
-                    const arrowType = item.getAttribute('data-arrow-type');
-                    if (arrowType && connection.arrowType === arrowType) {
-                        item.classList.add('active');
-                    }
-                });
-            }
-
-            // Connection arrow customization functions
-            function updateConnectionArrows(connection) {
-                console.log('updateConnectionArrows called with:', connection);
-                
-                if (!connection || !connection.arrowType) {
-                    console.warn('updateConnectionArrows: Invalid connection or missing arrowType');
-                    return;
-                }
-
-                // Validate connection object has required jsPlumb methods
-                if (typeof connection.removeAllOverlays !== 'function') {
-                    console.error('updateConnectionArrows: removeAllOverlays method missing');
-                    return;
-                }
-                
-                if (typeof connection.addOverlay !== 'function') {
-                    console.error('updateConnectionArrows: addOverlay method missing');
-                    return;
-                }
-
-                try {
-                    console.log('Preserving text labels and updating arrows for connection:', connection.id);
-                    
-                    // Preserve existing text labels before removing overlays
-                    let existingTextLabel = null;
-                    const existingOverlays = connection.getOverlays();
-                    Object.keys(existingOverlays).forEach(key => {
-                        const overlay = existingOverlays[key];
-                        if (overlay.type === 'Label') {
-                            existingTextLabel = overlay.getLabel();
-                        }
-                    });
-                    
-                    console.log('Removing existing overlays for connection:', connection.id);
-                    // Remove existing overlays
-                    connection.removeAllOverlays();
-                    
-                    console.log('Adding new overlays for arrow type:', connection.arrowType);
-                    // Add overlays based on arrow type
-                    switch (connection.arrowType) {
-                        case "one-way":
-                            connection.addOverlay(["Arrow", {
-                                location: 1,
-                                width: 10,
-                                length: 8,
-                                foldback: 0.8
-                            }]);
-                            console.log('Added one-way arrow overlay');
-                            break;
-                        case "double":
-                            connection.addOverlay(["Arrow", {
-                                location: 1,
-                                width: 10,
-                                length: 8,
-                                foldback: 0.8
-                            }]);
-                            connection.addOverlay(["Arrow", {
-                                location: 0,
-                                width: 10,
-                                length: 8,
-                                foldback: 0.8,
-                                direction: -1
-                            }]);
-                            console.log('Added double arrow overlays');
-                            break;
-                        case "none":
-                            console.log('No arrows added (none type)');
-                            // No arrows, just the line
-                            break;
-                        default:
-                            console.warn('Unknown arrow type:', connection.arrowType);
-                    }
-                    
-                    // Restore text label if it existed
-                    if (existingTextLabel && existingTextLabel.trim() !== '') {
-                        const labelId = `label-${connection.id}`;
-                        connection.addOverlay([
-                            "Label", 
-                            {
-                                id: labelId,
-                                label: existingTextLabel,
-                                location: 0.5,
-                                cssClass: "connection-label",
-                                events: {
-                                    dblclick: function(labelOverlay, originalEvent) {
-                                        originalEvent.stopPropagation();
-                                        showConnectionContextMenu(connection, originalEvent.clientX, originalEvent.clientY);
-                                    }
+                // Restore text label if it existed
+                if (existingTextLabel && existingTextLabel.trim() !== '') {
+                    const labelId = `label-${connection.id}`;
+                    connection.addOverlay([
+                        "Label",
+                        {
+                            id: labelId,
+                            label: existingTextLabel,
+                            location: 0.5,
+                            cssClass: "connection-label",
+                            events: {
+                                dblclick: function (labelOverlay, originalEvent) {
+                                    originalEvent.stopPropagation();
+                                    showConnectionContextMenu(connection, originalEvent.clientX, originalEvent.clientY);
                                 }
                             }
-                        ]);
-                        console.log(`Restored text label "${existingTextLabel}" after arrow update`);
-                        
-                        // Update connection.text to maintain consistency
-                        connection.text = existingTextLabel;
-                    }
+                        }
+                    ]);
+                    console.log(`Restored text label "${existingTextLabel}" after arrow update`);
 
-                    // Update visual appearance
-                    console.log('Repainting connection...');
-                    if (jsPlumbInstance) {
-                        try {
-                            // Try multiple repaint strategies
-                            if (connection.source && connection.target) {
-                                // Repaint the source and target elements
-                                jsPlumbInstance.repaint(connection.source);
-                                jsPlumbInstance.repaint(connection.target);
-                                console.log('Source and target elements repainted successfully');
-                            } else {
-                                // Fallback to repaint everything
-                                jsPlumbInstance.repaintEverything();
-                                console.log('All connections repainted successfully (fallback)');
-                            }
-                        } catch (repaintError) {
-                            console.warn('Repaint failed, trying repaintEverything:', repaintError.message);
+                    // Update connection.text to maintain consistency
+                    connection.text = existingTextLabel;
+                }
+
+                // Update visual appearance
+                console.log('Repainting connection...');
+                if (jsPlumbInstance) {
+                    try {
+                        // Try multiple repaint strategies
+                        if (connection.source && connection.target) {
+                            // Repaint the source and target elements
+                            jsPlumbInstance.repaint(connection.source);
+                            jsPlumbInstance.repaint(connection.target);
+                            console.log('Source and target elements repainted successfully');
+                        } else {
+                            // Fallback to repaint everything
                             jsPlumbInstance.repaintEverything();
+                            console.log('All connections repainted successfully (fallback)');
                         }
-                    } else {
-                        console.error('jsPlumbInstance not available');
+                    } catch (repaintError) {
+                        console.warn('Repaint failed, trying repaintEverything:', repaintError.message);
+                        jsPlumbInstance.repaintEverything();
                     }
-                } catch (error) {
-                    console.error('Error updating connection arrows:', error);
-                    console.error('Error stack:', error.stack);
-                    console.error('Connection object details:', {
-                        id: connection.id,
-                        type: typeof connection,
-                        constructor: connection.constructor?.name,
-                        arrowType: connection.arrowType,
-                        hasRemoveAllOverlays: typeof connection.removeAllOverlays,
-                        hasAddOverlay: typeof connection.addOverlay
-                    });
+                } else {
+                    console.error('jsPlumbInstance not available');
                 }
+            } catch (error) {
+                console.error('Error updating connection arrows:', error);
+                console.error('Error stack:', error.stack);
+                console.error('Connection object details:', {
+                    id: connection.id,
+                    type: typeof connection,
+                    constructor: connection.constructor?.name,
+                    arrowType: connection.arrowType,
+                    hasRemoveAllOverlays: typeof connection.removeAllOverlays,
+                    hasAddOverlay: typeof connection.addOverlay
+                });
+            }
+        }
+
+        /**
+         * Updates the text label on a connection
+         * @param {Object} connection - jsPlumb connection object
+         * @param {string} text - Text to display on the connection
+         */
+        function updateConnectionText(connection, text) {
+            if (!connection) {
+                console.warn('updateConnectionText: Invalid connection');
+                return;
             }
 
+            console.log(`Updating text for connection ${connection.id}: "${text}"`);
+
+            try {
+                // Remove existing text overlays
+                const existingOverlays = connection.getOverlays();
+                Object.keys(existingOverlays).forEach(key => {
+                    const overlay = existingOverlays[key];
+                    if (overlay.type === 'Label') {
+                        connection.removeOverlay(key);
+                    }
+                });
+
+                // Add new text overlay if text is provided
+                if (text && text.trim() !== '') {
+                    const labelId = `label-${connection.id}`;
+                    connection.addOverlay([
+                        "Label",
+                        {
+                            id: labelId,
+                            label: text,
+                            location: 0.5,
+                            cssClass: "connection-label",
+                            events: {
+                                dblclick: function (labelOverlay, originalEvent) {
+                                    // Allow editing text by double-clicking the label
+                                    originalEvent.stopPropagation();
+                                    showConnectionContextMenu(connection, originalEvent.clientX, originalEvent.clientY);
+                                }
+                            }
+                        }
+                    ]);
+                    console.log(`Added text label "${text}" to connection ${connection.id}`);
+                } else {
+                    console.log(`Removed text label from connection ${connection.id}`);
+                }
+
+                // Repaint the connection
+                if (connection.source && connection.target) {
+                    jsPlumbInstance.repaint(connection.source);
+                    jsPlumbInstance.repaint(connection.target);
+                }
+            } catch (error) {
+                console.error('Error updating connection text:', error);
+            }
+        }
+
+        function hideConnectionContextMenu() {
+            const contextMenu = document.getElementById('connection-context-menu');
+            if (contextMenu) {
+                contextMenu.style.display = 'none';
+            }
+            currentConnection = null;
+        }
+
+        function initializeWhiteboard() {
+            if (jsPlumbInstance) return;
+
+            // Initialize jsPlumb only
+            initializeJsPlumb();
+
+            // Initial resize
+            resizeCanvas();
+
+            // Resize on window resize
+            window.addEventListener('resize', resizeCanvas);
+
+            // Component palette event listeners
+            const componentBtns = document.querySelectorAll('.component-btn');
+            componentBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const componentType = e.target.getAttribute('data-component');
+                    if (componentType) {
+                        const rect = jsplumbContainer.getBoundingClientRect();
+                        const x = Math.random() * (rect.width - 100) + 50;
+                        const y = Math.random() * (rect.height - 100) + 50;
+
+                        if (componentType === 'custom') {
+                            // Prompt user for custom component name
+                            const customName = prompt('Enter a name for your custom component:', 'Custom Component');
+                            if (customName && customName.trim() !== '') {
+                                const displayName = customName.length > 20 ? customName.substring(0, 17) + '...' : customName;
+                                createDesignComponent(componentType, x, y, '🔧 ' + displayName);
+                            }
+                        } else {
+                            createDesignComponent(componentType, x, y);
+                        }
+                    }
+                });
+            });
+
+            const contextMenu = document.getElementById('connection-context-menu');
+
+            // Context menu event listeners
+            const contextMenuItems = contextMenu.querySelectorAll('.context-menu-item');
+            contextMenuItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    console.log('Context menu item clicked:', item.dataset.arrowType || item.dataset.action);
+
+                    // Store the connection reference before hiding the menu
+                    const connectionToModify = currentConnection;
+
+                    // Hide menu immediately to prevent any delays
+                    hideConnectionContextMenu();
+
+                    // Process the action using the stored connection reference
+                    if (item.dataset.arrowType && connectionToModify) {
+                        console.log('Updating arrow type to:', item.dataset.arrowType, 'for connection:', connectionToModify.id);
+                        connectionToModify.arrowType = item.dataset.arrowType;
+                        updateConnectionArrows(connectionToModify);
+                    } else if (item.dataset.action === 'delete' && connectionToModify) {
+                        console.log('Deleting connection:', connectionToModify.id);
+                        connectionRegistry.delete(connectionToModify.id);
+                        jsPlumbInstance.deleteConnection(connectionToModify);
+                        if (lastConnection === connectionToModify) {
+                            const remainingConnections = Array.from(connectionRegistry.values());
+                            lastConnection = remainingConnections.length > 0 ? remainingConnections[remainingConnections.length - 1] : null;
+                        }
+                    }
+                });
+            });
+
+            // Text update button event listener
+            const updateTextBtn = document.getElementById('update-text-btn');
+            if (updateTextBtn) {
+                updateTextBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    const textInput = document.getElementById('connection-text-input');
+                    const connectionToModify = currentConnection;
+
+                    if (textInput && connectionToModify) {
+                        const newText = textInput.value.trim();
+                        console.log('Updating connection text to:', newText, 'for connection:', connectionToModify.id);
+
+                        // Store text on connection object
+                        connectionToModify.text = newText;
+
+                        // Update connection with text label
+                        updateConnectionText(connectionToModify, newText);
+
+                        // Hide menu
+                        hideConnectionContextMenu();
+                    }
+                });
+            }
+
+            // Enter key support for text input
+            const textInput = document.getElementById('connection-text-input');
+            if (textInput) {
+                textInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('update-text-btn').click();
+                    }
+                });
+            }
+
+            // Global click handler to hide context menu
+            document.addEventListener('click', (e) => {
+                const contextMenu = document.getElementById('connection-context-menu');
+                if (contextMenu && !contextMenu.contains(e.target) && contextMenu.style.display === 'block') {
+                    hideConnectionContextMenu();
+                }
+            });
+
+            // === Global Event Handlers ===
+
             /**
-             * Updates the text label on a connection
-             * @param {Object} connection - jsPlumb connection object
-             * @param {string} text - Text to display on the connection
+             * Handles double-click events on connection elements
+             * Shows the connection context menu for the clicked connection
              */
-            function updateConnectionText(connection, text) {
-                if (!connection) {
-                    console.warn('updateConnectionText: Invalid connection');
+            jsplumbContainer.addEventListener('dblclick', (e) => {
+                console.log('\n=== Connection Double-Click Event ===');
+                console.log('Target element:', e.target.tagName, e.target.classList.toString());
+                console.log('Click coordinates:', e.clientX, e.clientY);
+
+                // Only handle clicks on connection-related elements
+                const isConnectionElement = e.target.classList.contains('jtk-connector') ||
+                    e.target.tagName === 'path' ||
+                    e.target.classList.contains('jtk-connector-outline');
+
+                if (!isConnectionElement) {
+                    console.log('Click target is not a connection element, ignoring');
                     return;
                 }
 
-                console.log(`Updating text for connection ${connection.id}: "${text}"`);
+                e.preventDefault();
+                e.stopPropagation();
 
-                try {
-                    // Remove existing text overlays
-                    const existingOverlays = connection.getOverlays();
-                    Object.keys(existingOverlays).forEach(key => {
-                        const overlay = existingOverlays[key];
-                        if (overlay.type === 'Label') {
-                            connection.removeOverlay(key);
-                        }
-                    });
+                // Identify the connection using our robust identification system
+                const targetConnection = identifyConnectionFromClick(e.target, e.clientX, e.clientY);
 
-                    // Add new text overlay if text is provided
-                    if (text && text.trim() !== '') {
-                        const labelId = `label-${connection.id}`;
-                        connection.addOverlay([
-                            "Label", 
-                            {
-                                id: labelId,
-                                label: text,
-                                location: 0.5,
-                                cssClass: "connection-label",
-                                events: {
-                                    dblclick: function(labelOverlay, originalEvent) {
-                                        // Allow editing text by double-clicking the label
-                                        originalEvent.stopPropagation();
-                                        showConnectionContextMenu(connection, originalEvent.clientX, originalEvent.clientY);
-                                    }
-                                }
-                            }
-                        ]);
-                        console.log(`Added text label "${text}" to connection ${connection.id}`);
-                    } else {
-                        console.log(`Removed text label from connection ${connection.id}`);
-                    }
-
-                    // Repaint the connection
-                    if (connection.source && connection.target) {
-                        jsPlumbInstance.repaint(connection.source);
-                        jsPlumbInstance.repaint(connection.target);
-                    }
-                } catch (error) {
-                    console.error('Error updating connection text:', error);
-                }
-            }
-
-            function hideConnectionContextMenu() {
-                const contextMenu = document.getElementById('connection-context-menu');
-                if (contextMenu) {
-                    contextMenu.style.display = 'none';
-                }
-                currentConnection = null;
-            }
-
-            function initializeWhiteboard() {
-                if (jsPlumbInstance) return;
-
-                // Initialize jsPlumb only
-                initializeJsPlumb();
-
-                // Initial resize
-                resizeCanvas();
-
-                // Resize on window resize
-                window.addEventListener('resize', resizeCanvas);
-
-                // Component palette event listeners
-                const componentBtns = document.querySelectorAll('.component-btn');
-                componentBtns.forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const componentType = e.target.getAttribute('data-component');
-                        if (componentType) {
-                            const rect = jsplumbContainer.getBoundingClientRect();
-                            const x = Math.random() * (rect.width - 100) + 50;
-                            const y = Math.random() * (rect.height - 100) + 50;
-
-                            if (componentType === 'custom') {
-                                // Prompt user for custom component name
-                                const customName = prompt('Enter a name for your custom component:', 'Custom Component');
-                                if (customName && customName.trim() !== '') {
-                                    const displayName = customName.length > 20 ? customName.substring(0, 17) + '...' : customName;
-                                    createDesignComponent(componentType, x, y, '🔧 ' + displayName);
-                                }
-                            } else {
-                                createDesignComponent(componentType, x, y);
-                            }
-                        }
-                    });
-                });
-
-                const contextMenu = document.getElementById('connection-context-menu');
-
-                // Context menu event listeners
-                const contextMenuItems = contextMenu.querySelectorAll('.context-menu-item');
-                contextMenuItems.forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-
-                        console.log('Context menu item clicked:', item.dataset.arrowType || item.dataset.action);
-
-                        // Store the connection reference before hiding the menu
-                        const connectionToModify = currentConnection;
-
-                        // Hide menu immediately to prevent any delays
-                        hideConnectionContextMenu();
-
-                        // Process the action using the stored connection reference
-                        if (item.dataset.arrowType && connectionToModify) {
-                            console.log('Updating arrow type to:', item.dataset.arrowType, 'for connection:', connectionToModify.id);
-                            connectionToModify.arrowType = item.dataset.arrowType;
-                            updateConnectionArrows(connectionToModify);
-                        } else if (item.dataset.action === 'delete' && connectionToModify) {
-                            console.log('Deleting connection:', connectionToModify.id);
-                            connectionRegistry.delete(connectionToModify.id);
-                            jsPlumbInstance.deleteConnection(connectionToModify);
-                            if (lastConnection === connectionToModify) {
-                                const remainingConnections = Array.from(connectionRegistry.values());
-                                lastConnection = remainingConnections.length > 0 ? remainingConnections[remainingConnections.length - 1] : null;
-                            }
-                        }
-                    });
-                });
-
-                // Text update button event listener
-                const updateTextBtn = document.getElementById('update-text-btn');
-                if (updateTextBtn) {
-                    updateTextBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        
-                        const textInput = document.getElementById('connection-text-input');
-                        const connectionToModify = currentConnection;
-                        
-                        if (textInput && connectionToModify) {
-                            const newText = textInput.value.trim();
-                            console.log('Updating connection text to:', newText, 'for connection:', connectionToModify.id);
-                            
-                            // Store text on connection object
-                            connectionToModify.text = newText;
-                            
-                            // Update connection with text label
-                            updateConnectionText(connectionToModify, newText);
-                            
-                            // Hide menu
-                            hideConnectionContextMenu();
-                        }
-                    });
+                if (targetConnection) {
+                    console.log('✓ Connection identified, showing context menu for:', targetConnection.id);
+                    showConnectionContextMenu(targetConnection, e.clientX, e.clientY);
+                } else {
+                    console.log('✗ No connection identified for this click');
                 }
 
-                // Enter key support for text input
-                const textInput = document.getElementById('connection-text-input');
-                if (textInput) {
-                    textInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            document.getElementById('update-text-btn').click();
-                        }
-                    });
-                }
+                console.log('=== End Double-Click Event ===\n');
+            });
 
-                // Global click handler to hide context menu
-                document.addEventListener('click', (e) => {
-                    const contextMenu = document.getElementById('connection-context-menu');
-                    if (contextMenu && !contextMenu.contains(e.target) && contextMenu.style.display === 'block') {
-                        hideConnectionContextMenu();
-                    }
-                });
-
-                // === Global Event Handlers ===
-
-                /**
-                 * Handles double-click events on connection elements
-                 * Shows the connection context menu for the clicked connection
-                 */
-                jsplumbContainer.addEventListener('dblclick', (e) => {
-                    console.log('\n=== Connection Double-Click Event ===');
-                    console.log('Target element:', e.target.tagName, e.target.classList.toString());
-                    console.log('Click coordinates:', e.clientX, e.clientY);
-
-                    // Only handle clicks on connection-related elements
-                    const isConnectionElement = e.target.classList.contains('jtk-connector') ||
-                        e.target.tagName === 'path' ||
-                        e.target.classList.contains('jtk-connector-outline');
-
-                    if (!isConnectionElement) {
-                        console.log('Click target is not a connection element, ignoring');
-                        return;
-                    }
+            // Global right-click handler with connection ID support
+            jsplumbContainer.addEventListener('contextmenu', (e) => {
+                if (e.target.classList.contains('jtk-connector') ||
+                    e.target.tagName === 'path' ||
+                    e.target.classList.contains('jtk-connector-outline')) {
 
                     e.preventDefault();
                     e.stopPropagation();
 
-                    // Identify the connection using our robust identification system
+                    console.log('Right-click on connection, target:', e.target);
+
+                    // Use connection ID-based identification - same as double-click
                     const targetConnection = identifyConnectionFromClick(e.target, e.clientX, e.clientY);
 
                     if (targetConnection) {
-                        console.log('✓ Connection identified, showing context menu for:', targetConnection.id);
+                        console.log('Right-click handler using connection:', targetConnection.id);
                         showConnectionContextMenu(targetConnection, e.clientX, e.clientY);
                     } else {
-                        console.log('✗ No connection identified for this click');
+                        console.log('Right-click: No connection identified');
                     }
-
-                    console.log('=== End Double-Click Event ===\n');
-                });
-
-                // Global right-click handler with connection ID support
-                jsplumbContainer.addEventListener('contextmenu', (e) => {
-                    if (e.target.classList.contains('jtk-connector') ||
-                        e.target.tagName === 'path' ||
-                        e.target.classList.contains('jtk-connector-outline')) {
-
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        console.log('Right-click on connection, target:', e.target);
-
-                        // Use connection ID-based identification - same as double-click
-                        const targetConnection = identifyConnectionFromClick(e.target, e.clientX, e.clientY);
-
-                        if (targetConnection) {
-                            console.log('Right-click handler using connection:', targetConnection.id);
-                            showConnectionContextMenu(targetConnection, e.clientX, e.clientY);
-                        } else {
-                            console.log('Right-click: No connection identified');
-                        }
-                    } else {
-                        // Prevent default context menu on other areas
-                        e.preventDefault();
-                    }
-                });
-            } // End of initializeWhiteboard function
-
-            // Clear all components function
-            function clearAllComponents() {
-                if (confirm('Are you sure you want to clear all components?')) {
-                    // Hide context menu if open
-                    hideConnectionContextMenu();
-
-                    // Clear the connection registry
-                    connectionRegistry.clear();
-                    console.log('Cleared connection registry');
-
-                    // Clear all jsPlumb connections and components
-                    if (jsPlumbInstance) {
-                        jsPlumbInstance.deleteEveryEndpoint();
-                        jsPlumbInstance.deleteEveryConnection();
-                    }
-                    // Remove all design components
-                    const components = jsplumbContainer.querySelectorAll('.design-component');
-                    components.forEach(component => {
-                        component.remove();
-                    });
-                    componentCounter = 0;
-                    connectionCounter = 0; // Reset connection counter for unique IDs
-                    lastConnection = null;
+                } else {
+                    // Prevent default context menu on other areas
+                    e.preventDefault();
                 }
-            }
-
-            // Add clear button to components palette
-            const clearButton = document.createElement('button');
-            clearButton.className = 'component-btn';
-            clearButton.style.backgroundColor = '#f44336';
-            clearButton.style.color = 'white';
-            clearButton.innerHTML = '🗑️ Clear All';
-            clearButton.addEventListener('click', clearAllComponents);
-            document.getElementById('components-palette').appendChild(clearButton);
-
-            // Initialize Split.js
-            Split(['#whiteboard-area', '#chat-area'], {
-                sizes: [75, 25],
-                minSize: [400, 250],
-                gutterSize: 10,
-                cursor: 'col-resize',
-                onDrag: resizeCanvas,
             });
+        } // End of initializeWhiteboard function
 
-            // Initialize the whiteboard on load
-            initializeWhiteboard();
+        // Clear all components function
+        function clearAllComponents() {
+            if (confirm('Are you sure you want to clear all components?')) {
+                // Hide context menu if open
+                hideConnectionContextMenu();
+
+                // Clear the connection registry
+                connectionRegistry.clear();
+                console.log('Cleared connection registry');
+
+                // Clear all jsPlumb connections and components
+                if (jsPlumbInstance) {
+                    jsPlumbInstance.deleteEveryEndpoint();
+                    jsPlumbInstance.deleteEveryConnection();
+                }
+                // Remove all design components
+                const components = jsplumbContainer.querySelectorAll('.design-component');
+                components.forEach(component => {
+                    component.remove();
+                });
+                componentCounter = 0;
+                connectionCounter = 0; // Reset connection counter for unique IDs
+                lastConnection = null;
+            }
+        }
+
+        // Add clear button to components palette
+        const clearButton = document.createElement('button');
+        clearButton.className = 'component-btn';
+        clearButton.style.backgroundColor = '#f44336';
+        clearButton.style.color = 'white';
+        clearButton.innerHTML = '🗑️ Clear All';
+        clearButton.addEventListener('click', clearAllComponents);
+        document.getElementById('components-palette').appendChild(clearButton);
+
+        // Initialize Split.js
+        Split(['#whiteboard-area', '#chat-area'], {
+            sizes: [75, 25],
+            minSize: [400, 250],
+            gutterSize: 10,
+            cursor: 'col-resize',
+            onDrag: resizeCanvas,
+        });
+
+        // Initialize the whiteboard on load
+        initializeWhiteboard();
     </script>
 </body>
+
 </html>
