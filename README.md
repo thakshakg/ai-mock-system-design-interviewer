@@ -1,7 +1,7 @@
 # 🧠 AI System Design Mock Interviewer
 
 An intelligent mock interviewer designed to help candidates prepare for system design interviews. This project simulates realistic interview scenarios, provides feedback, and guides users through architectural decision-making. The application features an integrated whiteboard for diagramming and a chat interface for interacting with the AI interviewer.
-
+### [Click here for the Live App](https://thakshakg.github.io/ai-mock-system-design-interviewer/)
 ## 🚀 Core Components
 
 The application is divided into two main areas: the AI Interviewer chat and the interactive Whiteboard. The layout is a split-screen view that is resizable to suit your workflow.
@@ -40,8 +40,6 @@ The whiteboard is a powerful tool for visual thinking and diagramming your syste
 
 **Integration with Chat:**
 - **Send Snapshots:** Your whiteboard diagrams can be sent to the AI interviewer as part of your message, allowing you to visually explain your design.
-
-### [Click here for the Live App](https://thakshakg.github.io/ai-mock-system-design-interviewer/)
 
 ## How to Use
 
